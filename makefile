@@ -1,6 +1,6 @@
 
 main: UI.o solver.o
-	g++ -Wall -Wextra -o main UI.o
+	g++ -Wall -Wextra -o main UI.o solver.o
 
 
 %.o: %.cpp
