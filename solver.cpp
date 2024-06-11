@@ -45,6 +45,13 @@ public:
 		(*this)[val] = nextFree;
 		return nextFree++;
 	}
+	
+	// Makes a remapper by applying the input to 'this', then 'other'.
+	// Assumes all inputs to 'other' are outputs from 'this'.
+	Remapper chain(Remapper & other) {
+		Remapper res;
+		
+	}
 };
 
 // A partially-completed search.
@@ -120,7 +127,7 @@ void floodZone(board& zones, board& colors, uint x, uint y, uint zoneNum) {
 }
 
 // Takes a board (of colors), returns a board (of zones)
-board genZones(board rawInput, int& zoneCount) {
+board genZones(board rawInput, int& zoneCount, vector<int> & zoneColors) {
 	// Generate a blank board.
 	board result = rawInput;
 	// Clear board
@@ -135,6 +142,7 @@ board genZones(board rawInput, int& zoneCount) {
 	for (uint y = 0; y < height; y++) {
 		for (uint x = 0; x < width; x++) {
 			if (result[y][x] == -1) {
+				zoneColors.push_back(rawInput[y][x]);
 				floodZone(result,rawInput,x,y,zoneNum++);
 			}
 		}
@@ -144,12 +152,6 @@ board genZones(board rawInput, int& zoneCount) {
 }
 
 
-// Takes a board, returns a complete solution.
-vector<vector<vector<int>>> solve(vector<vector<int>>) {
-	
-	
-	
-	return vector<vector<vector<int>>>();
-}
+
 
 

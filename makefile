@@ -1,6 +1,6 @@
 
-main: UI.o solver.o
-	g++ -Wall -Wextra -o main UI.o solver.o
+kamiSolver: UI.o solver.o
+	g++ -Wall -Wextra -o kamiSolver UI.o solver.o
 
 
 %.o: %.cpp
@@ -9,4 +9,4 @@ main: UI.o solver.o
 .PHONY: clean
 clean:
 	@(rm *.o 2> /dev/null && echo "rm *.o") || echo "rm *.o     (nothing deleted)"
-	@(rm main 2> /dev/null && echo "rm main") || echo "rm main  (nothing deleted)"
+	@(rm kamiSolver 2> /dev/null && echo "rm kamiSolver") || echo "rm kamiSolver  (nothing deleted)"

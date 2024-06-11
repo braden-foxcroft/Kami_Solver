@@ -67,17 +67,74 @@ string colored(int i) {
 }
 
 // combines 'colored' and 'fColored', depending on mode.
+// 0: nothing
+// 1: Background only
+// 2: Foreground only
+// 3: Both
 string mColored(int i, int mode) {
 	if (mode == 0) return to_string(i);
 	if (mode == 1) return colored(i);
-	if (mode == 2) return fColored(colored(i),i);
+	if (mode == 2) return fColored(to_string(i),i);
+	if (mode == 3) return fColored(colored(i),i);
 	return "?"; // Should never happen.
 }
 
-int main(int argc, char * argv[]) {
+void printHelp() {
+	cout << "args:\n";
+	cout << "\t-c0       no colors.\n";
+	cout << "\t-c1       background colors only.\n";
+	cout << "\t-c2       foreground colors only.\n";
+	cout << "\t-c3       both colors.\n";
+	cout << "\t-help     this page.\n";
+	cout << "\t-echo     debugging tool: show parsed input.\n";
+	cout << "\t-zones    debugging tool: only show zones.\n";
+	cout << "\t-graph    debugging tool: show initial graph state.\n";
+	cout << "\t-colors   debugging tool: show different color options.\n";
+}
+
+int main(int argc, char ** argv) {
 	// TODO Usage instructions
-	if (argc > 1) {
-		cout << argv[1] << "\n";
+	bool echoMode = false; // Show input and quit
+	bool zoneMode = false; // Show zones and quit
+	bool graphMode = false; // Show graph and quit
+	bool colorTest = false; // Show color options and quit.
+	int colorMode = 1; // The color mode to use.
+	for (int i = 1; i < argc; i++) {
+		string arg = argv[i];
+		if (arg == "-zones") {
+			zoneMode = true;
+		} else if (arg == "-echo") {
+			echoMode = true;
+		} else if (arg == "-graph") {
+			graphMode = true;
+		} else if (arg == "-c0") {
+			colorMode = 0;
+		} else if (arg == "-c1") {
+			colorMode = 1;
+		} else if (arg == "-c2") {
+			colorMode = 2;
+		} else if (arg == "-c3") {
+			colorMode = 3;
+		} else if (arg == "-colors") {
+			colorTest = true;
+		} else if (arg == "-help") {
+			printHelp();
+			return 0;
+		} else {
+			cout << "invalid arg: '" + arg + "'\n";
+			cout << "use '-help' for help.\n";
+			exit(1);
+		}
+	}
+	if (colorTest) {
+		for (int mode = 0; mode <= 3; mode++) {
+			cout << "-c" << mode << ":   ";
+			for (int i = 0; i < 15; i++) {
+				cout << mColored(i,mode) << " ";
+			}
+			cout << "\n";
+		}
+		return 0;
 	}
 	
 	char c;
@@ -98,7 +155,7 @@ int main(int argc, char * argv[]) {
 			// Handle mismatched row lengths.
 			if (rowLen != row.size()) {
 				cerr << "Bad input: lines are different lengths!\n";
-				exit(1);
+				exit(2);
 			}
 			board.push_back(row); // save row.
 			row = vector<int>(); // clear row.
@@ -113,26 +170,33 @@ int main(int argc, char * argv[]) {
 	}
 	if (board.size() == 0) {
 		cerr << "Bad input: no board provided!\n";
-		exit(3);
+		exit(2);
 	}
-	// TODO: parse board, return result.
-	if (argc > 1 and string(argv[1]) == "testFlooding") {
-		int zoneCount;
-		auto res = genZones(board,zoneCount);
-		for (auto row : res) {
+	if (echoMode) {
+		for (auto row : board) {
 			for (auto val : row) {
-				cout << colored(val);
+				cout << mColored(val,colorMode);
+			}
+			cout << "\n";
+		}
+	}
+	// Generate zone graph.
+	int zoneCount; // The number of zones.
+	vector<int> zoneColors; // The colors of each zone
+	auto zoneBoard = genZones(board, zoneCount, zoneColors);
+	if (zoneMode) {
+		for (auto row : zoneBoard) {
+			for (auto val : row) {
+				cout << mColored(val,colorMode);
 			}
 			cout << "\n";
 		}
 		return 0;
 	}
-	for (int mode = 0; mode <= 2; mode++) {
-		for (int i = 0; i < 15; i++) {
-			cout << mColored(i,mode) << " ";
-		}
-		cout << "\n";
-	}
+	// TODO zone board -> zone graph
+	// TODO zone graph -> Path
+	// TODO Path search. (in solver.cpp)
+	// TODO print results.
 	
 	return 0;
 }

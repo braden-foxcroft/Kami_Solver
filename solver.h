@@ -14,10 +14,8 @@ struct Graph {
 	std::unordered_map<int,std::unordered_set<int>> adjacent;
 };
 
-// Only visible for testing purposes.
-std::vector<std::vector<int>> genZones(std::vector<std::vector<int>> rawInput, int& zoneCount);
+// Takes a board of colors, returns a board of zone numbers.
+std::vector<std::vector<int>> genZones(std::vector<std::vector<int>> rawInput, int& zoneCount, std::vector<int> & zoneColors);
 
-// Returns a solution, as a list of coloring-info vectors.
-std::vector<std::vector<std::vector<int>>> solve(std::vector<std::vector<int>>);
 
 #endif
