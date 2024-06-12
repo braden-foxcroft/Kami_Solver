@@ -117,7 +117,7 @@ bool nextChar(char & c, bool canFinish) {
 }
 
 int main(int argc, char ** argv) {
-	// TODO Usage instructions
+	// Handle args.
 	bool colorTest = false; // Show color options and quit.
 	bool echoMode = false; // Show input
 	bool zoneMode = false; // Show zones
@@ -226,9 +226,22 @@ int main(int argc, char ** argv) {
 		cout << graph2Str(startingGraph, colorMode) << "\n";
 	}
 	// TODO zone graph -> Path
-	
 	// TODO Path search. (in solver.cpp)
-	// TODO print results.
+	
+	vector<vector<vector<int>>> sequence = solve(startingGraph,zoneBoard);
+	
+	// Print results.
+	cout << "An optimal solution:\n\n";
+	for (auto entry : sequence) {
+		for (auto row : entry) {
+			for (auto val : row) {
+				cout << mColored(val,colorMode);
+			}
+			cout << "\n";
+		}
+		cout << "\n\n";
+	}
+	
 	
 	return 0;
 }

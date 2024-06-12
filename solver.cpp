@@ -60,17 +60,28 @@ public:
 };
 
 // A partially-completed search.
+// Note: original board state is not preserved,
+// simply color assignments by zone.
 class Path {
 protected:
 	graph state;
 	int movesMade = 0;
-	vector<shared_ptr<board>> history; // A list of board states (int=zone)
-	vector<shared_ptr<vector<int>>> colors; // Maps zones to colors, for history.
+	vector<shared_ptr<vInt>> history; // A list of color mappings over time.
 public:
+	
+	// The default constructor is a ridiculously inefficient path.
+	// Useful for 
+	Path() {
+		this->state.nodeCount = 1000000;
+		this->movesMade = 1000000;
+	}
 	
 	Path(graph state) {
 		this->state = state;
 		movesMade = 0;
+		// Start the history with the current coloring.
+		vector<int>* startingColors = new vector(state.colors);
+		history.push_back(shared_ptr<vector<int>>(startingColors));
 	}
 	
 	// Get a list of following states
@@ -80,22 +91,30 @@ public:
 	}
 	
 	// Check if the search is complete.
-	bool complete() {return state.nodeCount == 1;}
+	bool done() {return state.nodeCount == 1;}
 	
 	// Generate a score (larger = worse)
-	int score() {
+	int score() const {
 		return movesMade + pow(state.nodeCount,2);
 	}
 	
 	int moveCount() {return movesMade;}
 	
-	// Compare to another Path. (better score wins)
-	bool operator < (Path& other) {
+	// Takes a zone map, and returns a list of zone maps, each with the colors filled in.
+	vector<vector<vector<int>>> applyHistory(vector<vector<int>> zoneMap) {
+		vector<vector<vector<int>>> result;
+		
+		// TODO
+		return result;
+	}
+	
+	// Compare to another Path. (better score first in maxQueue)
+	bool operator < (Path other) const {
 		return score() > other.score();
 	}
 	
 	operator string() {
-		return "a path"s;
+		return "A Path object."s;
 	}
 };
 
@@ -184,4 +203,12 @@ graph genGraph(board zones, int zoneCount, vector<int> zoneColors) {
 }
 
 
+vector<vector<vector<int>>> solve(struct Graph startingPoint, vector<vector<int>> zoneMap) {
+	Path best; // The best path we find.
+	priority_queue<Path> toTry;
+	toTry.push(Path(startingPoint));
+	// TODO Do the search.
+	
+	return best.applyHistory(zoneMap);
+}
 
