@@ -25,10 +25,18 @@ T pop(queue<T> & q) {
 	return res;
 }
 
+// Same, but for priority_queue
+template <typename T>
+T pop(priority_queue<T> & q) {
+	T res = q.top();
+	q.pop();
+	return res;
+}
+
 // Maps integers to other integers.
 // Unless otherwise specified, maps ints to themselves.
 class Remapper {
-private:
+protected:
 	unordered_map<int,int> myMap;
 	int nextFree = 0; // Assumes all remappings assigned via 'next()'
 public:
@@ -42,17 +50,47 @@ public:
 	}
 	
 	// Assigns a number to the next free possibility.
+	// Uses existing mapping, if found
 	int next(int val) {
+		if (myMap.find(val) != myMap.end()) {
+			return myMap[val];
+		}
 		(*this)[val] = nextFree;
 		return nextFree++;
 	}
 	
+	// Takes a graph, and remaps the node numbers, merging when necessary.
+	// Assumes this Remapper was generated using 'next'.
+	graph reduce(graph input) {
+		graph result;
+		// TODO check
+		result.nodeCount = nextFree;
+		// Make blank spaces for results
+		for (int node = 0; node < nextFree; node++) {
+			result.colors.push_back(-1);
+			result.adjacent[node]; // Make blank adjacency set.
+		}
+		// Copy across colors and adjacency.
+		for (int node = 0; node < input.nodeCount; node++) {
+			int newNode = (*this)[node];
+			result.colors[newNode] = input.colors[node];
+			for (int val : input.adjacent[node]) result.adjacent[newNode].insert(val);
+		}
+		return result;
+	}
+	
+	
 	// Makes a remapper by applying the input to 'this', then 'other'.
-	// Assumes all inputs to 'other' are outputs from 'this'.
-	// (since remappers act like the ID function unless otherwise specified.)
 	Remapper chain(Remapper & other) {
 		Remapper res;
-		for (auto key : this->myMap) {
+		// First, ensure this remapper has all needed keys
+		for (auto key : other.myMap) {
+			if (myMap.find(key.first) != myMap.end()) {
+				myMap[key.first] = key.first;
+			}
+		}
+		// Then, remap all keys as needed.
+		for (auto key : myMap) {
 			res[key.first] = other[key.second];
 		}
 		return res;
@@ -64,6 +102,8 @@ public:
 // simply color assignments by zone.
 class Path {
 protected:
+	int initialNodeCount = 0;
+	Remapper progress;
 	graph state;
 	int movesMade = 0;
 	vector<shared_ptr<vInt>> history; // A list of color mappings over time.
@@ -78,39 +118,85 @@ public:
 	
 	Path(graph state) {
 		this->state = state;
+		initialNodeCount = state.nodeCount;
 		movesMade = 0;
 		// Start the history with the current coloring.
 		vector<int>* startingColors = new vector(state.colors);
 		history.push_back(shared_ptr<vector<int>>(startingColors));
 	}
 	
-	// Get a list of following states
+	// Get a list immediately-reachable states.
 	vector<Path> followingStates() {
-		// TODO
-		return vector<Path>();
-	}
-	
-	// Check if the search is complete.
-	bool done() {return state.nodeCount == 1;}
-	
-	// Generate a score (larger = worse)
-	int score() const {
-		return movesMade + pow(state.nodeCount,2);
-	}
-	
-	int moveCount() {return movesMade;}
-	
-	// Takes a zone map, and returns a list of zone maps, each with the colors filled in.
-	vector<vector<vector<int>>> applyHistory(vector<vector<int>> zoneMap) {
-		vector<vector<vector<int>>> result;
-		
-		// TODO
+		// TODO check
+		vector<Path> result;
+		// For each node, try all reasonable actions
+		for (int node = 0; node < this->state.nodeCount; node++) {
+			unordered_set<int> colorOptions;
+			// Make a list of color changes for the node.
+			for (int node2 : this->state.adjacent[node]) {
+				colorOptions.insert(this->state.colors[node2]);
+			}
+			// Iterate through valid colorings, adding necessary new options
+			for (int nColor : colorOptions) {
+				Path nPath(*this); // Copy the existing setup.
+				nPath.state.colors[node] = nColor; // Change node color.
+				nPath.movesMade += 1; // One more move made.
+				Remapper reduction; // Remaps the node numbers.
+				// Find nodes to combine, and populate 'reduction'
+				for (int node2 = 0; node2 < state.nodeCount; node2++) {
+					// If the nodes should be merged.
+					if (state.colors[node2] == nPath.state.colors[node] and
+						state.adjacent[node].find(node2) != state.adjacent[node].end())
+					{
+						// Should be remapped to 'node'
+						reduction[node2] = reduction[node];
+					} else {
+						// No merge, new node.
+						reduction.next(node);
+					}
+				}
+				// Apply reduction to graph.
+				nPath.state = reduction.reduce(nPath.state);
+				// track reductions, relative to initial state of board.
+				nPath.progress = nPath.progress.chain(reduction);
+				// Add an entry to 'history'
+				vInt* newHEntry = new vector<int>();
+				for (int i = 0; i < initialNodeCount; i++) {
+					// Add a new color entry, mapping from original zone #.
+					newHEntry->push_back(nPath.state.colors[progress[i]]);
+				}
+				history.push_back(shared_ptr<vInt>(newHEntry));
+				result.push_back(nPath); // Finally, done with the new path.
+			}
+		}
 		return result;
 	}
 	
-	// Compare to another Path. (better score first in maxQueue)
+	// Check if the search is complete.
+	bool done() const {return state.nodeCount == 1;}
+	
+	int moveCount() const {return movesMade;}
+	
+	// Takes a zone map, and returns a list of zone maps, each with the colors filled in.
+	vector<vector<vector<int>>> applyHistory(vector<vector<int>> zoneMap) const {
+		// TODO check.
+		vector<vector<vector<int>>> result;
+		for (auto csP : this->history) {
+			vInt & cs = *csP; // Dereference pointer.
+			vector<vector<int>> nextBoard = zoneMap;
+			for (auto & row : nextBoard) {
+				for (auto & val : row) {
+					val = cs[val]; // Zone -> color mapping.
+				}
+			}
+			result.push_back(nextBoard);
+		}
+		return result;
+	}
+	
+	// Compare to another Path. (smaller moveCount first in maxQueue)
 	bool operator < (Path other) const {
-		return score() > other.score();
+		return moveCount() > other.moveCount();
 	}
 	
 	operator string() {
@@ -204,11 +290,14 @@ graph genGraph(board zones, int zoneCount, vector<int> zoneColors) {
 
 
 vector<vector<vector<int>>> solve(struct Graph startingPoint, vector<vector<int>> zoneMap) {
-	Path best; // The best path we find.
-	priority_queue<Path> toTry;
-	toTry.push(Path(startingPoint));
+	priority_queue<Path> q;
+	q.push(Path(startingPoint));
 	// TODO Do the search.
-	
-	return best.applyHistory(zoneMap);
+	while (!q.top().done()) {
+		Path p = pop(q);
+		// Add following states.
+		for (auto pNew : p.followingStates()) q.push(pNew);
+	}
+	return q.top().applyHistory(zoneMap);
 }
 

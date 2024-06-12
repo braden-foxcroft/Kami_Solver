@@ -79,15 +79,25 @@ string mColored(int i, int mode) {
 	return "?"; // Should never happen.
 }
 
-string graph2Str(struct Graph g, int colorMode) {
+string graph2Str(struct Graph g, int colorMode, bool includeColors) {
 	string res;
 	res += "Graph:\n";
-	for (int i = 0; i < g.nodeCount; i++) {
-		res += mColored(i,colorMode) + ": " + to_string(g.colors[i]) + "\n    => [";
-		for (auto other : g.adjacent[i]) {
-			res += mColored(other,colorMode) + ", ";
+	if (includeColors) {
+		for (int i = 0; i < g.nodeCount; i++) {
+			res += mColored(i,colorMode) + ": " + mColored(g.colors[i],colorMode) + "\n    => [";
+			for (auto other : g.adjacent[i]) {
+				res += mColored(other,colorMode) + ", ";
+			}
+			res += "]\n";
 		}
-		res += "]\n";
+	} else {
+		for (int i = 0; i < g.nodeCount; i++) {
+			res += mColored(i,colorMode) + " => [";
+			for (auto other : g.adjacent[i]) {
+				res += mColored(other,colorMode) + ", ";
+			}
+			res += "]\n";
+		}
 	}
 	return res;
 }
@@ -102,6 +112,7 @@ void printHelp() {
 	cout << "\t-echo     debugging tool: show parsed input.\n";
 	cout << "\t-zones    debugging tool: show zones.\n";
 	cout << "\t-graph    debugging tool: show initial graph state.\n";
+	cout << "\t-graphCs  debugging tool: show initial graph state, with node colors as well.\n";
 	cout << "\t-colors   debugging tool: show different color options.\n";
 }
 
@@ -122,6 +133,7 @@ int main(int argc, char ** argv) {
 	bool echoMode = false; // Show input
 	bool zoneMode = false; // Show zones
 	bool graphMode = false; // Show graph
+	bool graphCsMode = false; // Show graph with color matching.
 	int colorMode = 2; // The color mode to use.
 	for (int i = 1; i < argc; i++) {
 		string arg = argv[i];
@@ -131,6 +143,9 @@ int main(int argc, char ** argv) {
 			echoMode = true;
 		} else if (arg == "-graph") {
 			graphMode = true;
+		} else if (arg == "-graphCs") {
+			graphMode = true;
+			graphCsMode = true;
 		} else if (arg == "-c0") {
 			colorMode = 0;
 		} else if (arg == "-c1") {
@@ -223,11 +238,10 @@ int main(int argc, char ** argv) {
 	// turn zone board into zone graph
 	struct Graph startingGraph = genGraph(zoneBoard,zoneCount,zoneColors);
 	if (graphMode) {
-		cout << graph2Str(startingGraph, colorMode) << "\n";
+		cout << graph2Str(startingGraph, colorMode, graphCsMode) << "\n";
 	}
-	// TODO zone graph -> Path
-	// TODO Path search. (in solver.cpp)
 	
+	// Generate solution (via solver.cpp)
 	vector<vector<vector<int>>> sequence = solve(startingGraph,zoneBoard);
 	
 	// Print results.
