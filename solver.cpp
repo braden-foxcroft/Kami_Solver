@@ -33,12 +33,18 @@ T pop(priority_queue<T> & q) {
 	return res;
 }
 
-// TODO remove, for testing purposes only.
-// (This is like shared_ptr, but with debugging info)
-class myShared {
-	
+string graphShow(struct Graph g) {
+	string res;
+	res += "Graph:\n";
+	for (int i = 0; i < g.nodeCount; i++) {
+		res += to_string(i) + " => [";
+		for (auto other : g.adjacent[i]) {
+			res += to_string(other) + ", ";
+		}
+		res += "]\n";
+	}
+	return res;
 }
-
 
 // Maps integers to other integers.
 // Unless otherwise specified, maps ints to themselves.
@@ -47,13 +53,25 @@ protected:
 	unordered_map<int,int> myMap;
 	int nextFree = 0; // Assumes all remappings assigned via 'next()'
 public:
-
-	// sets a remapping
-	int& operator [](int val) {
+	
+	Remapper() {}
+	Remapper(int generate) {
+		for (int i = 0; i < generate; i++) {
+			next(i);
+		}
+	}
+	
+	// Same as '[]'
+	int& retrieve(int val) {
 		if (myMap.find(val) == myMap.end()) {
 			myMap[val] = val;
 		}
 		return myMap[val];
+	}
+	
+	// sets a remapping
+	int& operator [](int val) {
+		return retrieve(val);
 	}
 	
 	// Assigns a number to the next free possibility.
@@ -79,7 +97,7 @@ public:
 		}
 		// Copy across colors and adjacency.
 		for (int node = 0; node < input.nodeCount; node++) {
-			int newNode = (*this)[node];
+			int newNode = retrieve(node);
 			result.colors[newNode] = input.colors[node];
 			for (int val : input.adjacent[node]) result.adjacent[newNode].insert(val);
 		}
@@ -102,6 +120,14 @@ public:
 		}
 		return res;
 	}
+	
+	operator string() {
+		string res = "{";
+		for (auto key : myMap) {
+			res += to_string(key.first) + " : " + to_string(key.second) + ", ";
+		}
+		return res + "}(" + to_string(nextFree) + ")\n";
+	}
 };
 
 // A partially-completed search.
@@ -113,7 +139,7 @@ protected:
 	Remapper progress;
 	graph state;
 	int movesMade = 0;
-	vector<shared_ptr<vInt>> history; // A list of color mappings over time.
+	vector<vInt> history; // A list of color mappings over time.
 public:
 	
 	// The default constructor is a ridiculously inefficient path.
@@ -123,13 +149,12 @@ public:
 		this->movesMade = 1000000;
 	}
 	
-	Path(graph state) {
+	Path(graph state) : progress(state.nodeCount) {
 		this->state = state;
 		initialNodeCount = state.nodeCount;
 		movesMade = 0;
 		// Start the history with the current coloring.
-		shared_ptr<vInt> startingColors = make_shared<vInt>(state.colors);
-		history.push_back(move(startingColors));
+		history.push_back(state.colors);
 	}
 	
 	// Get a list immediately-reachable states.
@@ -148,31 +173,35 @@ public:
 				Path nPath(*this); // Copy the existing setup.
 				nPath.state.colors[node] = nColor; // Change node color.
 				nPath.movesMade += 1; // One more move made.
-				Remapper reduction; // Remaps the node numbers.
+				Remapper reduction = Remapper(); // Remaps the node numbers.
 				// Find nodes to combine, and populate 'reduction'
+				vInt toMerge; // A list of nodes to merge with 'node'
 				for (int node2 = 0; node2 < state.nodeCount; node2++) {
 					// If the nodes should be merged.
-					if (state.colors[node2] == nPath.state.colors[node] and
+					if (node != node2 and
+						state.colors[node2] == nPath.state.colors[node] and
 						state.adjacent[node].find(node2) != state.adjacent[node].end())
 					{
-						// Should be remapped to 'node'
-						reduction[node2] = reduction[node];
+						// Do nothing this pass; we do these at the end.
+						toMerge.push_back(node2);
 					} else {
 						// No merge, new node.
 						reduction.next(node);
 					}
 				}
+				for (auto node2 : toMerge) reduction[node2] = reduction[node];
+				
 				// Apply reduction to graph.
 				nPath.state = reduction.reduce(nPath.state);
 				// track reductions, relative to initial state of board.
 				nPath.progress = nPath.progress.chain(reduction);
 				// Add an entry to 'history'
-				shared_ptr<vInt> newHEntry = make_shared<vInt>();
+				vInt newHEntry = vInt();
 				for (int i = 0; i < initialNodeCount; i++) {
 					// Add a new color entry, mapping from original zone #.
-					newHEntry->push_back(nPath.state.colors[progress[i]]);
+					newHEntry.push_back(nPath.state.colors[progress[i]]);
 				}
-				history.push_back(move(newHEntry));
+				nPath.history.push_back(newHEntry);
 				result.push_back(nPath); // Finally, done with the new path.
 			}
 		}
@@ -188,8 +217,7 @@ public:
 	vector<vector<vector<int>>> applyHistory(vector<vector<int>> zoneMap) const {
 		// TODO check.
 		vector<vector<vector<int>>> result;
-		for (auto csP : this->history) {
-			vInt & cs = *csP; // Dereference pointer.
+		for (auto cs : this->history) {
 			vector<vector<int>> nextBoard = zoneMap;
 			for (auto & row : nextBoard) {
 				for (auto & val : row) {
@@ -207,7 +235,7 @@ public:
 	}
 	
 	operator string() {
-		return "A Path object."s;
+		return "Path: "s + to_string(movesMade) + "\n"s + graphShow(state);
 	}
 };
 
@@ -299,12 +327,18 @@ graph genGraph(board zones, int zoneCount, vector<int> zoneColors) {
 vector<vector<vector<int>>> solve(struct Graph startingPoint, vector<vector<int>> zoneMap) {
 	priority_queue<Path> q;
 	q.push(Path(startingPoint));
-	// TODO Do the search.
+	// Do the search.
 	while (!q.top().done()) {
 		Path p = pop(q);
+		cout << (string)p;
 		// Add following states.
-		for (auto pNew : p.followingStates()) q.push(pNew);
+		for (Path pNew : p.followingStates()) {
+			q.push(pNew);
+		}
 	}
-	return q.top().applyHistory(zoneMap);
+	cout << "\n\n";
+	Path p = pop(q);
+	cout << (string)p;
+	return p.applyHistory(zoneMap);
 }
 
