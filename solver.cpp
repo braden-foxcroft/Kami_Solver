@@ -33,6 +33,13 @@ T pop(priority_queue<T> & q) {
 	return res;
 }
 
+// TODO remove, for testing purposes only.
+// (This is like shared_ptr, but with debugging info)
+class myShared {
+	
+}
+
+
 // Maps integers to other integers.
 // Unless otherwise specified, maps ints to themselves.
 class Remapper {
@@ -121,8 +128,8 @@ public:
 		initialNodeCount = state.nodeCount;
 		movesMade = 0;
 		// Start the history with the current coloring.
-		vector<int>* startingColors = new vector(state.colors);
-		history.push_back(shared_ptr<vector<int>>(startingColors));
+		shared_ptr<vInt> startingColors = make_shared<vInt>(state.colors);
+		history.push_back(move(startingColors));
 	}
 	
 	// Get a list immediately-reachable states.
@@ -160,12 +167,12 @@ public:
 				// track reductions, relative to initial state of board.
 				nPath.progress = nPath.progress.chain(reduction);
 				// Add an entry to 'history'
-				vInt* newHEntry = new vector<int>();
+				shared_ptr<vInt> newHEntry = make_shared<vInt>();
 				for (int i = 0; i < initialNodeCount; i++) {
 					// Add a new color entry, mapping from original zone #.
 					newHEntry->push_back(nPath.state.colors[progress[i]]);
 				}
-				history.push_back(shared_ptr<vInt>(newHEntry));
+				history.push_back(move(newHEntry));
 				result.push_back(nPath); // Finally, done with the new path.
 			}
 		}
