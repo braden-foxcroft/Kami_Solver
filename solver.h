@@ -18,4 +18,6 @@ struct Graph {
 std::vector<std::vector<int>> genZones(std::vector<std::vector<int>> rawInput, int& zoneCount, std::vector<int> & zoneColors);
 
 
+struct Graph genGraph(std::vector<std::vector<int>> zones, int zoneCount, std::vector<int> zoneColors);
+
 #endif

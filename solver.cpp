@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <cmath>
 #include <memory>
@@ -48,9 +49,13 @@ public:
 	
 	// Makes a remapper by applying the input to 'this', then 'other'.
 	// Assumes all inputs to 'other' are outputs from 'this'.
+	// (since remappers act like the ID function unless otherwise specified.)
 	Remapper chain(Remapper & other) {
 		Remapper res;
-		
+		for (auto key : this->myMap) {
+			res[key.first] = other[key.second];
+		}
+		return res;
 	}
 };
 
@@ -87,6 +92,10 @@ public:
 	// Compare to another Path. (better score wins)
 	bool operator < (Path& other) {
 		return score() > other.score();
+	}
+	
+	operator string() {
+		return "a path"s;
 	}
 };
 
@@ -151,7 +160,28 @@ board genZones(board rawInput, int& zoneCount, vector<int> & zoneColors) {
 	return result;
 }
 
-
+graph genGraph(board zones, int zoneCount, vector<int> zoneColors) {
+	graph res;
+	res.nodeCount = zoneCount;
+	res.colors = zoneColors;
+	for (int i = 0; i < zoneCount; i++) res.adjacent[i] = unordered_set<int>();
+	uint height = zones.size();
+	uint width = zones[0].size();
+	for (uint y = 0; y < height; y++) {
+		for (uint x = 0; x < width; x++) {
+			if (x > 0 and zones[y][x] != zones[y][x-1]) {
+				res.adjacent[zones[y][x]].insert(zones[y][x-1]);
+				res.adjacent[zones[y][x-1]].insert(zones[y][x]);
+			}
+			if (y > 0 and zones[y][x] != zones[y-1][x]) {
+				res.adjacent[zones[y][x]].insert(zones[y-1][x]);
+				res.adjacent[zones[y-1][x]].insert(zones[y][x]);
+			}
+			// Only check above and left, since insertion is bidirectional.
+		}
+	}
+	return res;
+}
 
 
 

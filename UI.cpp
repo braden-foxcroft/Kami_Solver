@@ -79,6 +79,19 @@ string mColored(int i, int mode) {
 	return "?"; // Should never happen.
 }
 
+string graph2Str(struct Graph g, int colorMode) {
+	string res;
+	res += "Graph:\n";
+	for (int i = 0; i < g.nodeCount; i++) {
+		res += mColored(i,colorMode) + ": " + to_string(g.colors[i]) + "\n    => [";
+		for (auto other : g.adjacent[i]) {
+			res += mColored(other,colorMode) + ", ";
+		}
+		res += "]\n";
+	}
+	return res;
+}
+
 void printHelp() {
 	cout << "args:\n";
 	cout << "\t-c0       no colors.\n";
@@ -87,18 +100,29 @@ void printHelp() {
 	cout << "\t-c3       both colors.\n";
 	cout << "\t-help     this page.\n";
 	cout << "\t-echo     debugging tool: show parsed input.\n";
-	cout << "\t-zones    debugging tool: only show zones.\n";
+	cout << "\t-zones    debugging tool: show zones.\n";
 	cout << "\t-graph    debugging tool: show initial graph state.\n";
 	cout << "\t-colors   debugging tool: show different color options.\n";
 }
 
+// like cin.get(c).
+// If 'canFinish' is false, it will behave as though EOF was actually reading a linebreak.
+// This is to ensure the input always ends on an empty line.
+bool nextChar(char & c, bool canFinish) {
+	if (canFinish) return static_cast<bool>(cin.get(c));
+	bool res = static_cast<bool>(cin.get(c));
+	if (res) return res;
+	c = '\n';
+	return true;
+}
+
 int main(int argc, char ** argv) {
 	// TODO Usage instructions
-	bool echoMode = false; // Show input and quit
-	bool zoneMode = false; // Show zones and quit
-	bool graphMode = false; // Show graph and quit
 	bool colorTest = false; // Show color options and quit.
-	int colorMode = 1; // The color mode to use.
+	bool echoMode = false; // Show input
+	bool zoneMode = false; // Show zones
+	bool graphMode = false; // Show graph
+	int colorMode = 2; // The color mode to use.
 	for (int i = 1; i < argc; i++) {
 		string arg = argv[i];
 		if (arg == "-zones") {
@@ -141,7 +165,7 @@ int main(int argc, char ** argv) {
 	vector<vector<int>> board;
 	unsigned int rowLen = 0;
 	vector<int> row;
-	while (cin.get(c)) {
+	while (nextChar(c,row.size() == 0)) {
 		// ignore non-linebreak whitespace
 		if (c == '\r' or c == ' ' or c == '\t') {continue;}
 		// Ignore empty lines
@@ -173,28 +197,36 @@ int main(int argc, char ** argv) {
 		exit(2);
 	}
 	if (echoMode) {
+		cout << "Input:\n";
 		for (auto row : board) {
 			for (auto val : row) {
 				cout << mColored(val,colorMode);
 			}
 			cout << "\n";
 		}
+		cout << "\n";
 	}
 	// Generate zone graph.
 	int zoneCount; // The number of zones.
 	vector<int> zoneColors; // The colors of each zone
 	auto zoneBoard = genZones(board, zoneCount, zoneColors);
 	if (zoneMode) {
+		cout << "Zones:\n";
 		for (auto row : zoneBoard) {
 			for (auto val : row) {
 				cout << mColored(val,colorMode);
 			}
 			cout << "\n";
 		}
-		return 0;
+		cout << "\n";
 	}
-	// TODO zone board -> zone graph
+	// turn zone board into zone graph
+	struct Graph startingGraph = genGraph(zoneBoard,zoneCount,zoneColors);
+	if (graphMode) {
+		cout << graph2Str(startingGraph, colorMode) << "\n";
+	}
 	// TODO zone graph -> Path
+	
 	// TODO Path search. (in solver.cpp)
 	// TODO print results.
 	
