@@ -240,7 +240,7 @@ public:
 	
 	// A score for the quality of the run. Low score = good.
 	int score() const {
-		return moveCount() + state.nodeCount * state.nodeCount;
+		return moveCount();
 	}
 	
 	// Compare to another Path. (smaller moveCount first in maxQueue)
@@ -355,7 +355,7 @@ void solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vecto
 		// update best, if needed
 		if (best.beaten(p)) best = p;
 		// If a solution has already been found, trim invalid solutions.
-		if (best.done() and best.moveCount() <= p.moveCount()) continue;
+		// if (best.done() and best.moveCount() <= p.moveCount()) continue;
 		// cout << (string)p << "\n";
 		// Add following states.
 		for (Path pNew : p.followingStates()) {
