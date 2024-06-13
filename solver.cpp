@@ -56,17 +56,16 @@ public:
 	T val;
 	shared_ptr<LinkedList<T>> next;
 	
-	// Intutive constructor.
+	// Intutive constructors.
+	LinkedList() {}
 	LinkedList(T val, shared_ptr<LinkedList<T>> next) : val(val), next(next) {}
-	
-	// Wraps it in a shared_ptr, for convenience.
-	shared_ptr<LinkedList<T>> wrap() {return shared_ptr(this);}
+	LinkedList(T val) : val(val) {}
 	
 	// Converts it to a vector, with items in reverse order
 	// (since this is how we will use it.)
 	vector<T> rVector() {
 		if (next == nullptr) return {val}; // For final element.
-		vector<T> res = next->rVector;
+		vector<T> res = next->rVector();
 		res.push_back(val);
 		return res;
 	}
@@ -170,12 +169,12 @@ protected:
 	Remapper progress;
 	graph state;
 	int movesMade = 0;
-	vector<vInt> history; // A list of color mappings over time.
-	vector<graph> historyG; // A list of previous graphs. For debugging purposes.
+	shared_ptr<LinkedList<vInt>> history; // A list of color mappings over time.
+	shared_ptr<LinkedList<graph>> historyG; // A list of previous graphs. For debugging purposes.
 public:
 	
 	// The default constructor is a ridiculously inefficient path.
-	// Useful for 
+	// Useful for ensuring that 'best' gets replaced quickly in the search.
 	Path() {
 		this->state.nodeCount = 1000000;
 		this->movesMade = 1000000;
@@ -185,9 +184,8 @@ public:
 		this->state = state;
 		initialNodeCount = state.nodeCount;
 		movesMade = 0;
-		// Start the history with the current coloring.
-		history.push_back(state.colors);
-		historyG.push_back(state);
+		history = make_shared<LinkedList<vInt>>(state.colors);
+		historyG = make_shared<LinkedList<graph>>(state);
 	}
 	
 	// Get a list immediately-reachable states.
@@ -233,8 +231,10 @@ public:
 					// Add a new color entry, mapping from original zone #.
 					newHEntry.push_back(nPath.state.colors[nPath.progress[i]]);
 				}
-				nPath.history.push_back(newHEntry);
-				nPath.historyG.push_back(nPath.state);
+				// Update history. Since we are dealing with linked lists,
+				// we need to make a new node for each.
+				nPath.history = shared_ptr<LinkedList<vInt>>(new LinkedList(newHEntry,nPath.history));
+				nPath.historyG = shared_ptr<LinkedList<graph>>(new LinkedList(nPath.state,nPath.historyG));
 				result.push_back(nPath); // Finally, done with the new path.
 			}
 		}
@@ -247,13 +247,14 @@ public:
 	int moveCount() const {return movesMade;}
 	
 	vector<graph> graphHistory() {
-		return historyG;
+		return historyG->rVector();
 	}
 	
 	// Takes a zone map, and returns a list of zone maps, each with the colors filled in.
 	vector<vector<vector<int>>> applyHistory(vector<vector<int>> zoneMap) const {
 		vector<vector<vector<int>>> result;
-		for (auto cs : this->history) {
+		vector<vInt> myHistory = history->rVector();
+		for (auto cs : myHistory) {
 			vector<vector<int>> nextBoard = zoneMap;
 			for (auto & row : nextBoard) {
 				for (auto & val : row) {
