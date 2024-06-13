@@ -37,6 +37,17 @@ string fColored(string s, int i) {
 	}
 }
 
+// Turns an integer into a string
+string myIntToStr(int i) {
+	if (i >= 10 and i <= 35) {
+		// Use letters for large inputs.
+		string res;
+		res += 'A' + (i - 10);
+		return res;
+	}
+	return to_string(i);
+}
+
 // Turns an int into a color-coded string.
 // red, blue, orange, green, magenta,
 // dark red, dark blue, dark orange, dark green, cyan
@@ -63,7 +74,7 @@ string colored(int i) {
 		case 9:
 			return "\033[106m9\033[49m";
 		default:
-			return to_string(i);
+			return myIntToStr(i);
 	}
 }
 
@@ -73,9 +84,9 @@ string colored(int i) {
 // 2: Foreground only
 // 3: Both
 string mColored(int i, int mode) {
-	if (mode == 0) return to_string(i);
+	if (mode == 0) return myIntToStr(i);
 	if (mode == 1) return colored(i);
-	if (mode == 2) return fColored(to_string(i),i);
+	if (mode == 2) return fColored(myIntToStr(i),i);
 	if (mode == 3) return fColored(colored(i),i);
 	return "?"; // Should never happen.
 }
