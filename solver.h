@@ -20,6 +20,6 @@ std::vector<std::vector<int>> genZones(std::vector<std::vector<int>> rawInput, i
 
 struct Graph genGraph(std::vector<std::vector<int>> zones, int zoneCount, std::vector<int> zoneColors);
 
-void solve(struct Graph startingPoint, std::vector<std::vector<int>> zoneMap, std::vector<std::vector<std::vector<int>>> & result1, std::vector<struct Graph> & result2);
+bool solve(struct Graph startingPoint, std::vector<std::vector<int>> zoneMap, std::vector<std::vector<std::vector<int>>> & result1, std::vector<struct Graph> & result2, unsigned int maxTime);
 
 #endif

@@ -8,8 +8,9 @@
 #include <cmath>
 #include <memory>
 #include <queue>
-#include "solver.h"
 #include <iostream>
+#include <ctime>
+#include "solver.h"
 
 using namespace std;
 typedef vector<int> vInt;
@@ -373,12 +374,22 @@ graph genGraph(board zones, int zoneCount, vector<int> zoneColors) {
 }
 
 
-void solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vector<int>>> & result1, vector<graph> & result2) {
+// Solves the problem, and returns results to the '&' parameters.
+// The boolean result is 'true' unless it times out.
+bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vector<int>>> & result1, vector<graph> & result2, uint maxTime) {
+	bool fullSearch = true;
 	priority_queue<Path> q;
 	Path best;
 	q.push(Path(startingPoint));
+	clock_t start;
+	if (maxTime) start = clock();
+	clock_t cMaxTime = maxTime * CLOCKS_PER_SEC;
 	// Do the search.
 	while (q.size() > 0) {
+		if (maxTime != 0 and clock() - start > cMaxTime) {
+			fullSearch = false;
+			break;
+		}
 		Path p = pop(q);
 		// update best, if needed
 		if (best.beaten(p)) best = p;
@@ -393,5 +404,6 @@ void solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vecto
 	// cout << (string)best << "\n";
 	result1 = best.applyHistory(zoneMap);
 	result2 = best.graphHistory();
+	return fullSearch;
 }
 

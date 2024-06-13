@@ -3,6 +3,7 @@
 #include <vector>
 #include <iostream>
 #include <string>
+#include <algorithm>
 #include "solver.h"
 
 using namespace std;
@@ -140,6 +141,12 @@ string board2Str(board b, int colorMode) {
 	return res;
 }
 
+// Checks if the first input is a prefix of the second.
+bool isPrefix(string pref, string longer) {
+	auto a = std::mismatch(pref.begin(),pref.end(),longer.begin(),longer.end());
+	return a.first == pref.end();
+}	
+
 void printHelp() {
 	cout << "args:\n";
 	cout << "\t-c0       no colors.\n";
@@ -147,6 +154,7 @@ void printHelp() {
 	cout << "\t-c2       foreground colors only.\n";
 	cout << "\t-c3       both colors.\n";
 	cout << "\t-help     this page.\n";
+	cout << "\t-t=time   Stop solver after <time> seconds. Integers only.\n";
 	cout << "\t-echo     debugging tool: show parsed input.\n";
 	cout << "\t-zones    debugging tool: show zones.\n";
 	cout << "\t-graph    debugging tool: show initial graph state.\n";
@@ -176,6 +184,7 @@ int main(int argc, char ** argv) {
 	bool graphCsMode = false; // Show graph with color matching.
 	bool noSolve = false; // Stop before computing solution
 	bool graphHistory = false; // Show graphs involved in solution.
+	uint maxTime = 0; // The maximum time. Use timedMode to enable.
 	int colorMode = 2; // The color mode to use.
 	for (int i = 1; i < argc; i++) {
 		string arg = argv[i];
@@ -207,6 +216,13 @@ int main(int argc, char ** argv) {
 		} else if (arg == "-help") {
 			printHelp();
 			return 0;
+		} else if (isPrefix("-t=",arg)) {
+			maxTime = stoi(arg.substr(3));
+			if (maxTime == 0) {
+				cout << "invalid arg: '" + arg + "'\n";
+				cout << "time must be an int greater than 0!\n";
+				exit(1);
+			}
 		} else {
 			cout << "invalid arg: '" + arg + "'\n";
 			cout << "use '-help' for help.\n";
@@ -296,16 +312,22 @@ int main(int argc, char ** argv) {
 	// Generate solution (via solver.cpp)
 	vector<vector<vector<int>>> sequence;
 	vector<graph> gHistory;
-	solve(startingGraph,zoneBoard,sequence,gHistory);
+	bool perfect = solve(startingGraph,zoneBoard,sequence,gHistory,maxTime);
 	
 	// Print results.
-	cout << "An optimal solution:\n\n";
+	if (perfect) {
+		cout << "An optimal solution:\n\n";
+	} else {
+		cout << "Timed out. Best path found:\n\n";
+	}
 	for (uint i = 0; i < sequence.size(); i++) {
 		cout << board2Str(sequence[i],colorMode);
 		if (graphHistory) cout << graph2StrV2(gHistory[i],colorMode) << "\n";
 		cout << "\n\n";
 	}
-	
+	if (!perfect) {
+		cout << "Note: due to time-out, solution may not be optimal!\n\n";
+	}
 	
 	return 0;
 }
