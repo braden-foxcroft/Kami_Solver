@@ -99,7 +99,10 @@ public:
 		for (int node = 0; node < input.nodeCount; node++) {
 			int newNode = retrieve(node);
 			result.colors[newNode] = input.colors[node];
-			for (int val : input.adjacent[node]) result.adjacent[newNode].insert(val);
+			for (int val : input.adjacent[node]) {
+				if (val == newNode) continue; // Not adjacent to self.
+				result.adjacent[newNode].insert(val);
+			}
 		}
 		return result;
 	}
@@ -186,7 +189,7 @@ public:
 						toMerge.push_back(node2);
 					} else {
 						// No merge, new node.
-						reduction.next(node);
+						reduction.next(node2);
 					}
 				}
 				for (auto node2 : toMerge) reduction[node2] = reduction[node];
@@ -199,7 +202,7 @@ public:
 				vInt newHEntry = vInt();
 				for (int i = 0; i < initialNodeCount; i++) {
 					// Add a new color entry, mapping from original zone #.
-					newHEntry.push_back(nPath.state.colors[progress[i]]);
+					newHEntry.push_back(nPath.state.colors[nPath.progress[i]]);
 				}
 				nPath.history.push_back(newHEntry);
 				result.push_back(nPath); // Finally, done with the new path.
@@ -235,7 +238,7 @@ public:
 	}
 	
 	operator string() {
-		return "Path: "s + to_string(movesMade) + "\n"s + graphShow(state);
+		return "Path: len "s + to_string(movesMade) + "\n"s + graphShow(state);
 	}
 };
 
@@ -330,15 +333,14 @@ vector<vector<vector<int>>> solve(struct Graph startingPoint, vector<vector<int>
 	// Do the search.
 	while (!q.top().done()) {
 		Path p = pop(q);
-		cout << (string)p;
+		// cout << (string)p << "\n";
 		// Add following states.
 		for (Path pNew : p.followingStates()) {
 			q.push(pNew);
 		}
 	}
-	cout << "\n\n";
 	Path p = pop(q);
-	cout << (string)p;
+	// cout << (string)p << "\n";
 	return p.applyHistory(zoneMap);
 }
 
