@@ -88,7 +88,6 @@ public:
 	// Assumes this Remapper was generated using 'next'.
 	graph reduce(graph input) {
 		graph result;
-		// TODO check
 		result.nodeCount = nextFree;
 		// Make blank spaces for results
 		for (int node = 0; node < nextFree; node++) {
@@ -100,7 +99,9 @@ public:
 			int newNode = retrieve(node);
 			result.colors[newNode] = input.colors[node];
 			for (int val : input.adjacent[node]) {
-				if (val == newNode) continue; // Not adjacent to self.
+				val = retrieve(val); // Remap to new pos.
+				// Node cannot be adjacent to self.
+				if (val == newNode) continue;
 				result.adjacent[newNode].insert(val);
 			}
 		}
@@ -113,7 +114,7 @@ public:
 		Remapper res;
 		// First, ensure this remapper has all needed keys
 		for (auto key : other.myMap) {
-			if (myMap.find(key.first) != myMap.end()) {
+			if (myMap.find(key.first) == myMap.end()) {
 				myMap[key.first] = key.first;
 			}
 		}
@@ -143,6 +144,7 @@ protected:
 	graph state;
 	int movesMade = 0;
 	vector<vInt> history; // A list of color mappings over time.
+	vector<graph> historyG; // A list of previous graphs. For debugging purposes.
 public:
 	
 	// The default constructor is a ridiculously inefficient path.
@@ -158,11 +160,11 @@ public:
 		movesMade = 0;
 		// Start the history with the current coloring.
 		history.push_back(state.colors);
+		historyG.push_back(state);
 	}
 	
 	// Get a list immediately-reachable states.
 	vector<Path> followingStates() {
-		// TODO check
 		vector<Path> result;
 		// For each node, try all reasonable actions
 		for (int node = 0; node < this->state.nodeCount; node++) {
@@ -176,7 +178,7 @@ public:
 				Path nPath(*this); // Copy the existing setup.
 				nPath.state.colors[node] = nColor; // Change node color.
 				nPath.movesMade += 1; // One more move made.
-				Remapper reduction = Remapper(); // Remaps the node numbers.
+				Remapper reduction; // Remaps the node numbers.
 				// Find nodes to combine, and populate 'reduction'
 				vInt toMerge; // A list of nodes to merge with 'node'
 				for (int node2 = 0; node2 < state.nodeCount; node2++) {
@@ -205,6 +207,7 @@ public:
 					newHEntry.push_back(nPath.state.colors[nPath.progress[i]]);
 				}
 				nPath.history.push_back(newHEntry);
+				nPath.historyG.push_back(nPath.state);
 				result.push_back(nPath); // Finally, done with the new path.
 			}
 		}
@@ -216,9 +219,12 @@ public:
 	
 	int moveCount() const {return movesMade;}
 	
+	vector<graph> graphHistory() {
+		return historyG;
+	}
+	
 	// Takes a zone map, and returns a list of zone maps, each with the colors filled in.
 	vector<vector<vector<int>>> applyHistory(vector<vector<int>> zoneMap) const {
-		// TODO check.
 		vector<vector<vector<int>>> result;
 		for (auto cs : this->history) {
 			vector<vector<int>> nextBoard = zoneMap;
@@ -232,9 +238,21 @@ public:
 		return result;
 	}
 	
+	// A score for the quality of the run. Low score = good.
+	int score() const {
+		return moveCount() + state.nodeCount * state.nodeCount;
+	}
+	
 	// Compare to another Path. (smaller moveCount first in maxQueue)
 	bool operator < (Path other) const {
-		return moveCount() > other.moveCount();
+		return score() > other.score();
+	}
+	
+	// Checks which one is superior ('done' always beats 'not done')
+	// True means 'other' is superior.
+	bool beaten(Path other) const {
+		if (other.done() and !done()) return true;
+		return score() > other.score();
 	}
 	
 	operator string() {
@@ -327,20 +345,25 @@ graph genGraph(board zones, int zoneCount, vector<int> zoneColors) {
 }
 
 
-vector<vector<vector<int>>> solve(struct Graph startingPoint, vector<vector<int>> zoneMap) {
+void solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vector<int>>> & result1, vector<graph> & result2) {
 	priority_queue<Path> q;
+	Path best;
 	q.push(Path(startingPoint));
 	// Do the search.
-	while (!q.top().done()) {
+	while (q.size() > 0) {
 		Path p = pop(q);
+		// update best, if needed
+		if (best.beaten(p)) best = p;
+		// If a solution has already been found, trim invalid solutions.
+		if (best.done() and best.moveCount() <= p.moveCount()) continue;
 		// cout << (string)p << "\n";
 		// Add following states.
 		for (Path pNew : p.followingStates()) {
 			q.push(pNew);
 		}
 	}
-	Path p = pop(q);
-	// cout << (string)p << "\n";
-	return p.applyHistory(zoneMap);
+	// cout << (string)best << "\n";
+	result1 = best.applyHistory(zoneMap);
+	result2 = best.graphHistory();
 }
 

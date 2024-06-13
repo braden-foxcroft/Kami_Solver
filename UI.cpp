@@ -6,7 +6,8 @@
 #include "solver.h"
 
 using namespace std;
-
+typedef struct Graph graph;
+typedef vector<vector<int>> board;
 
 // Like 'colored', but modifies the foreground.
 string fColored(string s, int i) {
@@ -102,6 +103,32 @@ string graph2Str(struct Graph g, int colorMode, bool includeColors) {
 	return res;
 }
 
+// A variation of graph2Str,
+// Which uses zone colors instead.
+string graph2StrV2(struct Graph g, int colorMode) {
+	string res;
+	res += "Graph:\n";
+	for (int i = 0; i < g.nodeCount; i++) {
+		res += mColored(g.colors[i],colorMode) + " => [";
+		for (auto other : g.adjacent[i]) {
+			res += mColored(g.colors[other],colorMode) + ", ";
+		}
+		res += "]\n";
+	}
+	return res;
+}
+
+string board2Str(board b, int colorMode) {
+	string res;
+	for (auto row : b) {
+		for (auto val : row) {
+			res += mColored(val,colorMode);
+		}
+		res += "\n";
+	}
+	return res;
+}
+
 void printHelp() {
 	cout << "args:\n";
 	cout << "\t-c0       no colors.\n";
@@ -112,8 +139,10 @@ void printHelp() {
 	cout << "\t-echo     debugging tool: show parsed input.\n";
 	cout << "\t-zones    debugging tool: show zones.\n";
 	cout << "\t-graph    debugging tool: show initial graph state.\n";
-	cout << "\t-graphCs  debugging tool: show initial graph state, with node colors as well.\n";
+	cout << "\t-graphC   debugging tool: show initial graph state, with node colors as well.\n";
 	cout << "\t-colors   debugging tool: show different color options.\n";
+	cout << "\t-graphs   debugging tool: show graph history for solutions, as well.\n";
+	cout << "\t-noSolve  debugging tool: don't compute solutions.\n";
 }
 
 // like cin.get(c).
@@ -134,6 +163,8 @@ int main(int argc, char ** argv) {
 	bool zoneMode = false; // Show zones
 	bool graphMode = false; // Show graph
 	bool graphCsMode = false; // Show graph with color matching.
+	bool noSolve = false; // Stop before computing solution
+	bool graphHistory = false; // Show graphs involved in solution.
 	int colorMode = 2; // The color mode to use.
 	for (int i = 1; i < argc; i++) {
 		string arg = argv[i];
@@ -143,7 +174,13 @@ int main(int argc, char ** argv) {
 			echoMode = true;
 		} else if (arg == "-graph") {
 			graphMode = true;
-		} else if (arg == "-graphCs") {
+		} else if (arg == "-graphs") {
+			graphHistory = true;
+		} else if (arg == "-graphs") {
+			graphHistory = true;
+		} else if (arg == "-noSolve") {
+			noSolve = true;
+		} else if (arg == "-graphC") {
 			graphMode = true;
 			graphCsMode = true;
 		} else if (arg == "-c0") {
@@ -241,18 +278,20 @@ int main(int argc, char ** argv) {
 		cout << graph2Str(startingGraph, colorMode, graphCsMode) << "\n";
 	}
 	
+	if (noSolve) return 0;
+	
+	
+	
 	// Generate solution (via solver.cpp)
-	vector<vector<vector<int>>> sequence = solve(startingGraph,zoneBoard);
+	vector<vector<vector<int>>> sequence;
+	vector<graph> gHistory;
+	solve(startingGraph,zoneBoard,sequence,gHistory);
 	
 	// Print results.
 	cout << "An optimal solution:\n\n";
-	for (auto entry : sequence) {
-		for (auto row : entry) {
-			for (auto val : row) {
-				cout << mColored(val,colorMode);
-			}
-			cout << "\n";
-		}
+	for (uint i = 0; i < sequence.size(); i++) {
+		cout << board2Str(sequence[i],colorMode);
+		if (graphHistory) cout << graph2StrV2(gHistory[i],colorMode) << "\n";
 		cout << "\n\n";
 	}
 	
