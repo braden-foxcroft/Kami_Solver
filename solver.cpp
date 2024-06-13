@@ -46,6 +46,33 @@ string graphShow(struct Graph g) {
 	return res;
 }
 
+// A simple linked list.
+// Instances of this list should always be constructed using 'new'
+template <typename T>
+class LinkedList {
+public:
+	// Members are public, since this is basically
+	// a glorified struct.
+	T val;
+	shared_ptr<LinkedList<T>> next;
+	
+	// Intutive constructor.
+	LinkedList(T val, shared_ptr<LinkedList<T>> next) : val(val), next(next) {}
+	
+	// Wraps it in a shared_ptr, for convenience.
+	shared_ptr<LinkedList<T>> wrap() {return shared_ptr(this);}
+	
+	// Converts it to a vector, with items in reverse order
+	// (since this is how we will use it.)
+	vector<T> rVector() {
+		if (next == nullptr) return {val}; // For final element.
+		vector<T> res = next->rVector;
+		res.push_back(val);
+		return res;
+	}
+	
+};
+
 // Maps integers to other integers.
 // Unless otherwise specified, maps ints to themselves.
 class Remapper {
