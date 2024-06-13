@@ -383,7 +383,7 @@ void solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vecto
 		// update best, if needed
 		if (best.beaten(p)) best = p;
 		// If a solution has already been found, trim invalid solutions.
-		if (best.done() and best.moveCount() <= p.moveCount()) continue;
+		if (best.done() and p.moveCount() + 1 >= best.moveCount()) continue;
 		// cout << (string)p << "\n";
 		// Add following states.
 		for (Path pNew : p.followingStates()) {
