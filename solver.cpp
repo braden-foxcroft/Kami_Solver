@@ -194,14 +194,26 @@ public:
 	}
 	
 	// Get a list immediately-reachable states.
-	vector<Path> followingStates() {
+	// 'doneOnly' enforces that we only show 'done' paths.
+	vector<Path> followingStates(bool doneOnly) {
 		vector<Path> result;
 		// For each node, try all reasonable actions
 		for (int node = 0; node < this->state.nodeCount; node++) {
+			if (doneOnly) {
+				// If it isn't adjacent to everything, it can't combine everything.
+				if (state.adjacent[node].size() < (uint)(state.nodeCount - 1))
+					continue;
+			}
+			
 			unordered_set<int> colorOptions;
 			// Make a list of color changes for the node.
 			for (int node2 : this->state.adjacent[node]) {
 				colorOptions.insert(this->state.colors[node2]);
+			}
+			if (doneOnly) {
+				// If there are multiple colors adjacent, it can't combine everything.
+				if (colorOptions.size() > 1) continue;
+				// If this test and the previous test passed, the result will be 
 			}
 			// Iterate through valid colorings, adding necessary new options
 			for (int nColor : colorOptions) {
@@ -241,6 +253,12 @@ public:
 				nPath.history = shared_ptr<LinkedList<vInt>>(new LinkedList(newHEntry,nPath.history));
 				nPath.historyG = shared_ptr<LinkedList<graph>>(new LinkedList(nPath.state,nPath.historyG));
 				result.push_back(nPath); // Finally, done with the new path.
+				if (doneOnly) {
+					// Technically, we only need one 'done' entry.
+					// The rest are extraneous.
+					// After all, two entries at the same depth are equivalent.
+					return result;
+				}
 			}
 		}
 		return result;
@@ -453,8 +471,12 @@ bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vecto
 		// If a solution has already been found, trim invalid solutions.
 		if (best.done() and p.moveCount() + 1 >= best.moveCount()) continue;
 		// cout << (string)p << "\n";
+		// If we are one layer before the deepest valid, then
+		// only contribute 'done' entries.
+		// This lets us optimize our 'for' loops a bit.
+		bool doneOnly = p.moveCount() == best.moveCount() - 2;
 		// Add following states.
-		for (Path pNew : p.followingStates()) {
+		for (Path pNew : p.followingStates(doneOnly)) {
 			q.push(pNew);
 		}
 	}
