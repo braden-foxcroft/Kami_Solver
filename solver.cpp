@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <unordered_map>
+#include <map>
 #include <unordered_set>
 #include <string>
 #include <cmath>
@@ -33,6 +34,8 @@ T pop(priority_queue<T> & q) {
 	q.pop();
 	return res;
 }
+
+// Below, there is a variant of 'pop' for priority_queue_Path
 
 string graphShow(struct Graph g) {
 	string res;
@@ -72,6 +75,7 @@ public:
 	}
 	
 };
+
 
 // Maps integers to other integers.
 // Unless otherwise specified, maps ints to themselves.
@@ -284,10 +288,62 @@ public:
 		return score() > other.score();
 	}
 	
+	// Gives the 'fingerprint'. If two paths have the same fingerprint, then
+	// they will have the same following states.
+	pair<int,vInt> fingerprint() {
+		return {movesMade,history->val};
+	}
+	
 	operator string() {
 		return "Path: len "s + to_string(movesMade) + "\n"s + graphShow(state);
 	}
 };
+
+// An improved priority_queue.
+// Extends priority_queue<Path> by enforcing that a path cannot be added if another path
+// reached the same coloring in the same or fewer moves.
+// TODO
+class priority_queue_Path {
+	priority_queue<Path> q; // The internal queue.
+	map<vInt,int> bestSoFar; // For each state, the best move-count to reach it.
+public:
+	// push: needed from priority_queue
+	void push(Path p) {
+		pair<int,vInt> fp = p.fingerprint();
+		int moves = fp.first;
+		vInt state = fp.second;
+		if (bestSoFar.find(state) != bestSoFar.end()) {
+			// Another path already reached this state.
+			// Check if they reached it faster.
+			if (bestSoFar[state] <= moves) {
+				// cout << "discarded!\n";
+				return;
+			}
+		}
+		bestSoFar[state] = moves; // Update best path.
+		q.push(p);
+	}
+	
+	// pop: works better than priority_queue version
+	Path pop() {
+		Path res = q.top();
+		q.pop();
+		return res;
+	}
+	
+	
+	// size: needed from priority_queue
+	size_t size() {
+		return q.size();
+	}
+	
+	
+};
+
+template <typename T>
+T pop(priority_queue_Path & q) {
+	return q.pop();
+}
 
 // Takes a blank (-1 populated) 'zones' board, a 'colors' board,
 // an x,y, and zoneNum.
@@ -378,7 +434,8 @@ graph genGraph(board zones, int zoneCount, vector<int> zoneColors) {
 // The boolean result is 'true' unless it times out.
 bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vector<int>>> & result1, vector<graph> & result2, uint maxTime) {
 	bool fullSearch = true;
-	priority_queue<Path> q;
+	priority_queue_Path q;
+	// priority_queue<Path> q;
 	Path best;
 	q.push(Path(startingPoint));
 	clock_t start;
@@ -390,7 +447,7 @@ bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vecto
 			fullSearch = false;
 			break;
 		}
-		Path p = pop(q);
+		Path p = pop<Path>(q);
 		// update best, if needed
 		if (best.beaten(p)) best = p;
 		// If a solution has already been found, trim invalid solutions.
