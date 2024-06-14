@@ -340,8 +340,8 @@ public:
 	
 };
 
-template <typename T>
-T pop(priority_queue_Path & q) {
+
+Path pop(priority_queue_Path & q) {
 	return q.pop();
 }
 
@@ -447,7 +447,7 @@ bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vecto
 			fullSearch = false;
 			break;
 		}
-		Path p = pop<Path>(q);
+		Path p = pop(q);
 		// update best, if needed
 		if (best.beaten(p)) best = p;
 		// If a solution has already been found, trim invalid solutions.
