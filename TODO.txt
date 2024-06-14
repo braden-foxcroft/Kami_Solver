@@ -2,6 +2,3 @@
 - Require flag to use actual terminal (isattl) entry scheme.
 - Flag to add borders to board display (using box characters)
 - Tighten best-case: movesMade + colorsRemaining - 1
-- Special handling of n-2:
-	- only add 'done' candidates?
-	- Only consider nodes where they are adjacent to every other node?

@@ -1,10 +1,10 @@
 
 kamiSolver: UI.o solver.o
-	g++ -Wall -Wextra -o kamiSolver UI.o solver.o
+	g++ -O2 -Wall -Wextra -o kamiSolver UI.o solver.o
 
 
 %.o: %.cpp
-	g++ -c -Wall -Wextra -o $*.o $*.cpp
+	g++ -O2 -c -Wall -Wextra -o $*.o $*.cpp
 
 .PHONY: clean
 clean:
