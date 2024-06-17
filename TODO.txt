@@ -1,4 +1,1 @@
 - Make readme.md
-- Require flag to use actual terminal (isattl) entry scheme.
-- Flag to add borders to board display (using box characters)
-- Tighten best-case: movesMade + colorsRemaining - 1

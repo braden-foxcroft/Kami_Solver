@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <fstream>
 #include "solver.h"
 
 using namespace std;
@@ -130,13 +131,25 @@ string graph2StrV2(struct Graph g, int colorMode) {
 	return res;
 }
 
-string board2Str(board b, int colorMode) {
+string board2Str(board b, int colorMode, bool drawBorders) {
 	string res;
+	if (drawBorders) {
+		res += "┌";
+		for (uint i = 0; i < b[0].size(); i++) res += "─";
+		res += "┐\n";
+	}
 	for (auto row : b) {
+		if (drawBorders) res += "│";
 		for (auto val : row) {
 			res += mColored(val,colorMode);
 		}
+		if (drawBorders) res += "│";
 		res += "\n";
+	}
+	if (drawBorders) {
+		res += "└";
+		for (uint i = 0; i < b[0].size(); i++) res += "─";
+		res += "┘";
 	}
 	return res;
 }
@@ -148,28 +161,42 @@ bool isPrefix(string pref, string longer) {
 }	
 
 void printHelp() {
+	cout << "To use, enter a grid of numbers, ending in EOF (ctrl-d on linux)\n";
+	cout << "Or, include a filename as one of the args.\n\n";
 	cout << "args:\n";
-	cout << "\t-c0       no colors.\n";
-	cout << "\t-c1       background colors only.\n";
-	cout << "\t-c2       foreground colors only.\n";
-	cout << "\t-c3       both colors.\n";
-	cout << "\t-help     this page.\n";
-	cout << "\t-t=time   Stop solver after <time> seconds. Integers only.\n";
-	cout << "\t-echo     debugging tool: show parsed input.\n";
-	cout << "\t-zones    debugging tool: show zones.\n";
-	cout << "\t-graph    debugging tool: show initial graph state.\n";
-	cout << "\t-graphC   debugging tool: show initial graph state, with node colors as well.\n";
-	cout << "\t-colors   debugging tool: show different color options.\n";
-	cout << "\t-graphs   debugging tool: show graph history for solutions, as well.\n";
-	cout << "\t-noSolve  debugging tool: don't compute solutions.\n";
+	cout << "\t-c0        No colors.\n";
+	cout << "\t-c1        Background colors only.\n";
+	cout << "\t-c2        Foreground colors only.\n";
+	cout << "\t-c3        Solid text (rather nice-looking).\n";
+	cout << "\t-borders   Draw borders around boards (can fix some graphical bugs).\n";
+	cout << "\t-auto      Assume input comes from a file or pipe, and skip user prompts.\n";
+	cout << "\t           This is automatically enabled if you pass a file parameter\n";
+	cout << "\t-help      This page.\n";
+	cout << "\t-t=time    Stop solver after <time> seconds. Integers only.\n";
+	cout << "\t-echo      debugging tool: show parsed input.\n";
+	cout << "\t-zones     debugging tool: show zones.\n";
+	cout << "\t-graph     debugging tool: show initial graph state.\n";
+	cout << "\t-graphC    debugging tool: show initial graph state, with node colors as well.\n";
+	cout << "\t-colors    debugging tool: show different color options.\n";
+	cout << "\t-graphs    debugging tool: show graph history for solutions, as well.\n";
+	cout << "\t-noSolve   debugging tool: don't compute solutions.\n\n";
+	cout << "\t<filename> A file to automatically open and use for input.\n";
 }
 
 // like cin.get(c).
 // If 'canFinish' is false, it will behave as though EOF was actually reading a linebreak.
 // This is to ensure the input always ends on an empty line.
-bool nextChar(char & c, bool canFinish) {
-	if (canFinish) return static_cast<bool>(cin.get(c));
-	bool res = static_cast<bool>(cin.get(c));
+// 'fileInput' and 'inputFile' track if to read from a file instead,
+// and the file to read from.
+bool nextChar(char & c, bool canFinish, bool fileInput, ifstream & inputFile) {
+	bool res;
+	// Read a char from the appropriate source.
+	if (!fileInput) {
+		res = static_cast<bool>(cin.get(c));
+	} else {
+		res = static_cast<bool>(inputFile.get(c));
+	}
+	if (canFinish) return res;
 	if (res) return res;
 	c = '\n';
 	return true;
@@ -184,6 +211,10 @@ int main(int argc, char ** argv) {
 	bool graphCsMode = false; // Show graph with color matching.
 	bool noSolve = false; // Stop before computing solution
 	bool graphHistory = false; // Show graphs involved in solution.
+	bool drawBorders = false; // Draw borders for graphs.
+	bool fileInput = false; // Decides if we are using input from a file.
+	bool noUserMessage = false; // Skips message when user manually enters input.
+	ifstream inputFile; // File to use, if applicable.
 	uint maxTime = 0; // The maximum time. Use timedMode to enable.
 	int colorMode = 2; // The color mode to use.
 	for (int i = 1; i < argc; i++) {
@@ -211,8 +242,12 @@ int main(int argc, char ** argv) {
 			colorMode = 2;
 		} else if (arg == "-c3") {
 			colorMode = 3;
+		} else if (arg == "-borders") {
+			drawBorders = true;
 		} else if (arg == "-colors") {
 			colorTest = true;
+		} else if (arg == "-auto") {
+			noUserMessage = true;
 		} else if (arg == "-help") {
 			printHelp();
 			return 0;
@@ -224,9 +259,15 @@ int main(int argc, char ** argv) {
 				exit(1);
 			}
 		} else {
-			cout << "invalid arg: '" + arg + "'\n";
-			cout << "use '-help' for help.\n";
-			exit(1);
+			inputFile.open(arg);
+			if (!inputFile.is_open()) {
+				cout << "invalid arg: '" + arg + "'\n";
+				cout << "use '-help' for help.\n";
+				exit(1);
+			}
+			cout << "input file '" + arg + "' successfully opened\n";
+			fileInput = true;
+			noUserMessage = true;
 		}
 	}
 	if (colorTest) {
@@ -240,11 +281,18 @@ int main(int argc, char ** argv) {
 		return 0;
 	}
 	
+	if (!noUserMessage) {
+		cout << "Please enter a grid of digits from 0-9. This will represent the game board.\n";
+		cout << "Spaces and empty lines will be safely ignored.\n";
+		cout << "When you are done, please leave an empty line and press ctrl-d (EOF on linux),\n";
+		cout << "or ctrl-z (EOF on Windows) to finish the input.\n";
+	}
+	
 	char c;
 	vector<vector<int>> board;
 	unsigned int rowLen = 0;
 	vector<int> row;
-	while (nextChar(c,row.size() == 0)) {
+	while (nextChar(c,row.size() == 0,fileInput,inputFile)) {
 		// ignore non-linebreak whitespace
 		if (c == '\r' or c == ' ' or c == '\t') {continue;}
 		// Ignore empty lines
@@ -277,12 +325,7 @@ int main(int argc, char ** argv) {
 	}
 	if (echoMode) {
 		cout << "Input:\n";
-		for (auto row : board) {
-			for (auto val : row) {
-				cout << mColored(val,colorMode);
-			}
-			cout << "\n";
-		}
+		cout << board2Str(board,colorMode,drawBorders);
 		cout << "\n";
 	}
 	// Generate zone graph.
@@ -321,7 +364,7 @@ int main(int argc, char ** argv) {
 		cout << "Timed out. Best path found:\n\n";
 	}
 	for (uint i = 0; i < sequence.size(); i++) {
-		cout << board2Str(sequence[i],colorMode);
+		cout << board2Str(sequence[i],colorMode,drawBorders);
 		if (graphHistory) cout << graph2StrV2(gHistory[i],colorMode) << "\n";
 		cout << "\n\n";
 	}
