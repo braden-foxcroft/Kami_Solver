@@ -35,8 +35,9 @@ T pop(priority_queue<T> & q) {
 	return res;
 }
 
-// Below, there is a variant of 'pop' for priority_queue_Path
+// Further down, there is an additional variant of 'pop' for priority_queue_Path
 
+// Creates a graph representation, for debugging purposes.
 string graphShow(struct Graph g) {
 	string res;
 	res += "Graph:\n";
@@ -51,7 +52,8 @@ string graphShow(struct Graph g) {
 }
 
 // A simple linked list.
-// Instances of this list should always be constructed using 'new'
+// Instances of this list should always be owned by a shared_ptr.
+// Can be turned into a vector, though doing this reverses the elements.
 template <typename T>
 class LinkedList {
 public:
@@ -79,6 +81,7 @@ public:
 
 // Maps integers to other integers.
 // Unless otherwise specified, maps ints to themselves.
+// Highly cusomized for specific use cases, so functions have very weak guarantees in the general case.
 class Remapper {
 protected:
 	unordered_map<int,int> myMap;
@@ -106,7 +109,7 @@ public:
 	}
 	
 	// Assigns a number to the next free possibility.
-	// Uses existing mapping, if found
+	// Uses existing mapping, if found.
 	int next(int val) {
 		if (myMap.find(val) != myMap.end()) {
 			return myMap[val];
@@ -193,7 +196,7 @@ public:
 		historyG = make_shared<LinkedList<graph>>(state);
 	}
 	
-	// Get a list immediately-reachable states.
+	// Get a list of immediately-reachable states.
 	// 'doneOnly' enforces that we only show 'done' paths.
 	vector<Path> followingStates(bool doneOnly) {
 		vector<Path> result;
@@ -273,7 +276,7 @@ public:
 		return historyG->rVector();
 	}
 	
-	// Takes a zone map, and returns a list of zone maps, each with the colors filled in.
+	// Takes a zone map, and returns a list of boards, each with the colors filled in.
 	vector<vector<vector<int>>> applyHistory(vector<vector<int>> zoneMap) const {
 		vector<vector<vector<int>>> result;
 		vector<vInt> myHistory = history->rVector();
@@ -294,7 +297,7 @@ public:
 		return moveCount() + state.nodeCount * state.nodeCount;
 	}
 	
-	// Compare to another Path. (smaller moveCount first in maxQueue)
+	// Compare to another Path. (used for a maxQueue)
 	bool operator < (Path other) const {
 		return score() > other.score();
 	}
@@ -320,7 +323,6 @@ public:
 // An improved priority_queue.
 // Extends priority_queue<Path> by enforcing that a path cannot be added if another path
 // reached the same coloring in the same or fewer moves.
-// TODO
 class priority_queue_Path {
 	priority_queue<Path> q; // The internal queue.
 	map<vInt,int> bestSoFar; // For each state, the best move-count to reach it.
@@ -485,4 +487,6 @@ bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vecto
 	result2 = best.graphHistory();
 	return fullSearch;
 }
+
+// TODO: add additional optimizations: color count, (max distance - 1) / 2
 
