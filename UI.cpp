@@ -11,7 +11,8 @@ using namespace std;
 typedef struct Graph graph;
 typedef vector<vector<int>> board;
 
-// Like 'colored', but modifies the foreground.
+// Changes the foreground color of a string.
+// Takes an int. 0-9 chooses a color, any other case leaves the text the default color.
 string fColored(string s, int i) {
 	switch (i) {
 		case 0:
@@ -39,7 +40,10 @@ string fColored(string s, int i) {
 	}
 }
 
-// Turns an integer into a string
+// Turns a single-digit integer into a single-char string.
+// Converts larger integers to capital letters.
+// It should never recieve larger values than that,
+// but if it does, it returns them as-is.
 string myIntToStr(int i) {
 	if (i >= 10 and i <= 35) {
 		// Use letters for large inputs.
@@ -50,7 +54,8 @@ string myIntToStr(int i) {
 	return to_string(i);
 }
 
-// Turns an int into a color-coded string.
+// Turns a single-digit int into a string with a corresponding background color.
+// for ints larger than 9, returns an uncolored capital letter.
 // red, blue, orange, green, magenta,
 // dark red, dark blue, dark orange, dark green, cyan
 string colored(int i) {
@@ -80,7 +85,8 @@ string colored(int i) {
 	}
 }
 
-// combines 'colored' and 'fColored', depending on mode.
+// Returns a colored digit by mode.
+// Mode options:
 // 0: nothing
 // 1: Background only
 // 2: Foreground only
@@ -93,6 +99,8 @@ string mColored(int i, int mode) {
 	return "?"; // Should never happen.
 }
 
+// Converts a graph to a printable, potentially colored string.
+// 'includeColors' decides if to display the node colors (graph metadata)
 string graph2Str(struct Graph g, int colorMode, bool includeColors) {
 	string res;
 	res += "Graph:\n";
@@ -117,7 +125,7 @@ string graph2Str(struct Graph g, int colorMode, bool includeColors) {
 }
 
 // A variation of graph2Str,
-// Which uses zone colors instead.
+// Which displays zone colors instead.
 string graph2StrV2(struct Graph g, int colorMode) {
 	string res;
 	res += "Graph:\n";
@@ -131,6 +139,7 @@ string graph2StrV2(struct Graph g, int colorMode) {
 	return res;
 }
 
+// Converts a board to a string. Does not validate inputs.
 string board2Str(board b, int colorMode, bool drawBorders) {
 	string res;
 	if (drawBorders) {
@@ -149,7 +158,7 @@ string board2Str(board b, int colorMode, bool drawBorders) {
 	if (drawBorders) {
 		res += "└";
 		for (uint i = 0; i < b[0].size(); i++) res += "─";
-		res += "┘";
+		res += "┘\n";
 	}
 	return res;
 }
@@ -183,11 +192,11 @@ void printHelp() {
 	cout << "\t<filename> A file to automatically open and use for input.\n";
 }
 
-// like cin.get(c).
-// If 'canFinish' is false, it will behave as though EOF was actually reading a linebreak.
+// An enriched variation of cin.get(c).
+// If 'canFinish' is false, it will behave as though EOF was actually a linebreak.
 // This is to ensure the input always ends on an empty line.
 // 'fileInput' and 'inputFile' track if to read from a file instead,
-// and the file to read from.
+// and the file to read from, when applicable.
 bool nextChar(char & c, bool canFinish, bool fileInput, ifstream & inputFile) {
 	bool res;
 	// Read a char from the appropriate source.
@@ -202,20 +211,21 @@ bool nextChar(char & c, bool canFinish, bool fileInput, ifstream & inputFile) {
 	return true;
 }
 
+// The main routine for the solver.
 int main(int argc, char ** argv) {
 	// Handle args.
 	bool colorTest = false; // Show color options and quit.
 	bool echoMode = false; // Show input
-	bool zoneMode = false; // Show zones
+	bool zoneMode = false; // Show zone boards
 	bool graphMode = false; // Show graph
 	bool graphCsMode = false; // Show graph with color matching.
 	bool noSolve = false; // Stop before computing solution
 	bool graphHistory = false; // Show graphs involved in solution.
 	bool drawBorders = false; // Draw borders for graphs.
 	bool fileInput = false; // Decides if we are using input from a file.
-	bool noUserMessage = false; // Skips message when user manually enters input.
+	bool noUserMessage = false; // Skips help message when user manually enters input.
 	ifstream inputFile; // File to use, if applicable.
-	uint maxTime = 0; // The maximum time. Use timedMode to enable.
+	uint maxTime = 0; // The maximum time. '0' means 'none'
 	int colorMode = 2; // The color mode to use.
 	for (int i = 1; i < argc; i++) {
 		string arg = argv[i];
@@ -248,7 +258,7 @@ int main(int argc, char ** argv) {
 			colorTest = true;
 		} else if (arg == "-auto") {
 			noUserMessage = true;
-		} else if (arg == "-help") {
+		} else if (arg == "-help" or arg == "--help" or arg == "/?" or arg == "-h") {
 			printHelp();
 			return 0;
 		} else if (isPrefix("-t=",arg)) {
@@ -284,8 +294,7 @@ int main(int argc, char ** argv) {
 	if (!noUserMessage) {
 		cout << "Please enter a grid of digits from 0-9. This will represent the game board.\n";
 		cout << "Spaces and empty lines will be safely ignored.\n";
-		cout << "When you are done, please leave an empty line and press ctrl-d (EOF on linux),\n";
-		cout << "or ctrl-z (EOF on Windows) to finish the input.\n";
+		cout << "When you are done, enter 'q' to finish entering input.\n\n";
 	}
 	
 	char c;
@@ -299,8 +308,10 @@ int main(int argc, char ** argv) {
 		if (row.size() == 0 and c == '\n') {
 			continue;
 		}
+		// Quit if 'q' is sent on a blank line.
+		if (c == 'q' and row.size() == 0) break;
 		// handle non-empty lines
-		if (c == '\n') {
+		if (c == '\n' or c == 'q') {
 			// Set length of rows, if needed.
 			if (rowLen == 0) {rowLen = row.size();}
 			// Handle mismatched row lengths.
@@ -310,6 +321,8 @@ int main(int argc, char ** argv) {
 			}
 			board.push_back(row); // save row.
 			row = vector<int>(); // clear row.
+			// Quit if 'q' sent.
+			if (c == 'q') break;
 			continue;
 		}
 		// Handle int input
@@ -348,6 +361,7 @@ int main(int argc, char ** argv) {
 		cout << graph2Str(startingGraph, colorMode, graphCsMode) << "\n";
 	}
 	
+	// Quit if solution not required.
 	if (noSolve) return 0;
 	
 	
