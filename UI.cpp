@@ -173,23 +173,24 @@ void printHelp() {
 	cout << "To use, enter a grid of numbers, ending in EOF (ctrl-d on linux)\n";
 	cout << "Or, include a filename as one of the args.\n\n";
 	cout << "args:\n";
-	cout << "\t-c0        No colors.\n";
-	cout << "\t-c1        Background colors only.\n";
-	cout << "\t-c2        Foreground colors only.\n";
-	cout << "\t-c3        Solid text (rather nice-looking).\n";
-	cout << "\t-borders   Draw borders around boards (can fix some graphical bugs).\n";
-	cout << "\t-auto      Assume input comes from a file or pipe, and skip user prompts.\n";
-	cout << "\t           This is automatically enabled if you pass a file parameter\n";
-	cout << "\t-help      This page.\n";
-	cout << "\t-t=time    Stop solver after <time> seconds. Integers only.\n";
-	cout << "\t-echo      debugging tool: show parsed input.\n";
-	cout << "\t-zones     debugging tool: show zones.\n";
-	cout << "\t-graph     debugging tool: show initial graph state.\n";
-	cout << "\t-graphC    debugging tool: show initial graph state, with node colors as well.\n";
-	cout << "\t-colors    debugging tool: show different color options.\n";
-	cout << "\t-graphs    debugging tool: show graph history for solutions, as well.\n";
-	cout << "\t-noSolve   debugging tool: don't compute solutions.\n\n";
-	cout << "\t<filename> A file to automatically open and use for input.\n";
+	cout << "\t-c0         No colors.\n";
+	cout << "\t-c1         Background colors only.\n";
+	cout << "\t-c2         Foreground colors only.\n";
+	cout << "\t-c3         Solid text (rather nice-looking).\n";
+	cout << "\t-borders    Draw borders around boards (can fix some graphical bugs).\n";
+	cout << "\t-auto       Assume input comes from a file or pipe, and skip user prompts.\n";
+	cout << "\t            This is automatically enabled if you pass a file parameter\n";
+	cout << "\t-help       This page.\n";
+	cout << "\t-t=time     Stop solver after <time> seconds. Integers only.\n";
+	cout << "\t-echo       debugging tool: show parsed input.\n";
+	cout << "\t-zones      debugging tool: show zones.\n";
+	cout << "\t-graph      debugging tool: show initial graph state.\n";
+	cout << "\t-graphC     debugging tool: show initial graph state, with node colors as well.\n";
+	cout << "\t-colors     debugging tool: show different color options.\n";
+	cout << "\t-graphs     debugging tool: show graph history for solutions, as well.\n";
+	cout << "\t-noSolve    debugging tool: don't compute solutions.\n\n";
+	cout << "\t-s=<file>   A solution file to color and print out. Use -c0 to -c3 to select coloring.\n";
+	cout << "\t<filename>  A file to automatically open and use for input.\n";
 }
 
 // An enriched variation of cin.get(c).
@@ -211,6 +212,33 @@ bool nextChar(char & c, bool canFinish, bool fileInput, ifstream & inputFile) {
 	return true;
 }
 
+// Prints out a file, replacing colors with the selected colors.
+// Starts coloring when it encounters ":\n"
+void colorFile(ifstream & file, int colorMode) {
+	char c;
+	int startColoring = 0;
+	while (file.get(c)) {
+		if (!startColoring) {
+			if (c == ':') {
+				if (not file.get(c)) {
+					cout << ':';
+					break;
+				} else if (c == '\n' or c == '\r') {
+					startColoring = true;
+					cout << ':' << c;
+				}					
+			} else {
+				cout << c;
+			}
+		} else if (c >= '0' and c <= '9') {
+			cout << mColored(c - '0',colorMode);
+		} else {
+			cout << c;
+		}
+	}
+	cout << '\n';
+}
+
 // The main routine for the solver.
 int main(int argc, char ** argv) {
 	// Handle args.
@@ -223,8 +251,10 @@ int main(int argc, char ** argv) {
 	bool graphHistory = false; // Show graphs involved in solution.
 	bool drawBorders = false; // Draw borders for graphs.
 	bool fileInput = false; // Decides if we are using input from a file.
-	bool noUserMessage = false; // Skips help message when user manually enters input.
 	ifstream inputFile; // File to use, if applicable.
+	bool fileSol = false; // Decides if we are printing a solution from a file.
+	ifstream solFile; // File to use, if applicable.
+	bool noUserMessage = false; // Skips help message when user manually enters input.
 	uint maxTime = 0; // The maximum time. '0' means 'none'
 	int colorMode = 2; // The color mode to use.
 	for (int i = 1; i < argc; i++) {
@@ -268,6 +298,13 @@ int main(int argc, char ** argv) {
 				cout << "time must be an int greater than 0!\n";
 				exit(1);
 			}
+		} else if (isPrefix("-s=",arg)) {
+			solFile.open(arg.substr(3));
+			if (!solFile.is_open()) {
+				cout << "Failed to open solution file: " << arg.substr(3) << "\n";
+				exit(1);
+			}
+			fileSol = true;
 		} else {
 			inputFile.open(arg);
 			if (!inputFile.is_open()) {
@@ -288,6 +325,11 @@ int main(int argc, char ** argv) {
 			}
 			cout << "\n";
 		}
+		return 0;
+	}
+	
+	if (fileSol) {
+		colorFile(solFile,colorMode);
 		return 0;
 	}
 	
