@@ -691,7 +691,7 @@ bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vecto
 	// cout << (string)best << "\n";
 	if (!best.done()) {
 		result1 = {};
-		result2 = {}
+		result2 = {};
 		cout << "Failed to find result.\n";
 		return false;
 	}

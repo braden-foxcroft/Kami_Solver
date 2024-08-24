@@ -233,6 +233,11 @@ void colorFile(ifstream & file, int colorMode) {
 			}
 		} else if (c >= '0' and c <= '9') {
 			cout << mColored(c - '0',colorMode);
+		} else if (c == '\033') {
+			// Color code. skip to after 'm'.
+			while (c != 'm') {
+				if (not file.get(c)) break; // End of file.
+			}
 		} else {
 			cout << c;
 		}
