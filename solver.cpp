@@ -78,28 +78,40 @@ public:
 	
 };
 
+// Pad a string to a given length with leading spaces.
+string padSpace(string in, int max) {
+	reverse(in.begin(),in.end()); // Reverse, so we can post-append spaces.
+	while (in.size() < (uint)max) {
+		in += ' ';
+	}
+	reverse(in.begin(),in.end()); // reverse again, to put spaces at beginning.
+	return in;
+}
+
+
+
 // A multiset for integers from 0 to N.
 // Tracks number of nonzero elements.
 // Basically just an array.
 class IntMultiSet {
 protected:
 	vector<int> data;
-	int count = 0; // Number of nonzero elements.
+	int countVal = 0; // Number of nonzero elements.
 	
 public:
 	
-	IntMultiSet(int n) : data(n), count(0) {}
+	IntMultiSet(int n) : data(n), countVal(0) {}
 	
 	// Increment or decrement value.
 	void inc(int pos) {
 		int& dat = data[pos];
-		if (dat == 0) count++;
+		if (dat == 0) countVal++;
 		dat++;
 	}
 	
 	void dec(int pos) {
 		int& dat = data[pos];
-		if (dat == 1) count--;
+		if (dat == 1) countVal--;
 		dat--;
 	}
 	
@@ -107,16 +119,19 @@ public:
 	// Assumes all values are valid.
 	// Should only be used as an initializer.
 	void tally(vector<int> & v) {
-		for (int& i : v) {
+		for (int i : v) {
 			inc(i);
 		}
 	}
 	
-	// Counts number of nonzero vals.
-	int vals() {
-		return count;
-	}
+	// Read-only.
+	int operator [](int i) {return data[i];}
 	
+	// Counts number of nonzero vals.
+	int count() {
+		return countVal;
+	}
+
 };
 
 
@@ -183,6 +198,11 @@ public:
 		return result;
 	}
 	
+	// Gets next free int.
+	int getNextFree() {
+		return nextFree;
+	}
+	
 	
 	// Makes a remapper by applying the input to 'this', then 'other'.
 	Remapper chain(Remapper & other) {
@@ -209,6 +229,130 @@ public:
 	}
 };
 
+// Tracks the distance between every pair of nodes in a graph.
+// Maintains a square grid, even though one half is unused (since the coordinate math is easier)
+// Generates distances with iterative Dijkstra's for each node. O(n^3).
+// Can do update by combining nodes (and using lowest value for each dist),
+// then Floyd-Warshal for k=mergedNode only. O(n^2).
+class DistTracker {
+protected:
+	vector<int> distances;
+	int size = 0; // width and height of square.
+	int greatestDist = -1; // Greatest distance between nodes.
+	
+	// Same as '()'.
+	// For internal use, to make syntax easier to read.
+	int& pos(int x, int y) {return operator()(x,y);}
+	int& pos(int x, int y, int size, vector<int> & toAccess) {return operator()(x,y,size,toAccess);}
+	
+	// Takes a vector and does Dijkstra's to calculate distances from the given node.
+	// Uses the graph for adjacency checks.
+	int dijkstra(int node, graph & g) {
+		int dist = 0; // Simply the distance of the last node checked.
+		queue<int> nodes;
+		// '-1' is used to say that the node we look at next is
+		// one unit further than the node we just looked at.
+		// It is replaced at the end of the queue whenever it is reached, to ensure
+		// exactly one instance at all times.
+		nodes.push(node);
+		nodes.push(-1);
+		while (true) {
+			int next = pop(nodes);
+			if (nodes.size() == 0) break; // only '-1' was left in the list.
+			if (next == -1) {
+				dist++;
+				nodes.push(-1);
+				continue;
+			}
+			// Update dist of node
+			pos(next,node) = dist;
+			// Add adjacent nodes to queue if needed.
+			for (int i : g.adjacent[next]) {
+				if (pos(i,node) == -1) nodes.push(i); // Add to end of list.
+			}
+		}
+		return dist; // The distance of the furthest node.
+	}
+	
+	
+public:
+	// Figure out distances
+	DistTracker(graph & g) {
+		size = g.nodeCount;
+		// Create distance table.
+		distances = vector<int>(size*size,-1);
+		// Start with iterative Dijkstra's.
+		// Better than Floyd-Warshal's O(n^3),
+		// since graphs are sparse and equal-weighted, meaning O(n^2 + ne) overall.
+		// This may not be asymptotically better, but e < n^2, so it's better in practice.
+		int max = 0;
+		for (int i = 0; i < size; i++) {
+			int newMax = dijkstra(i,g);
+			if (newMax > max) max = newMax;
+		}
+		greatestDist = max;
+	}
+	
+	// like [], but allows an x and y pair.
+	int& operator ()(int x, int y) {
+		return operator()(x,y,size,distances);
+	}
+	
+	// like [], but allows an x and y pair.
+	int& operator ()(int x, int y, int size, vector<int> & dists) {
+		// Reverses params if needed.
+		if (y > x) return dists[y + x * size];
+		return dists[x + y * size];
+	}
+	
+	// combines nodes in accordance with remapper, recalculates distances as needed.
+	void reduce(Remapper & red, int mergedNode) {
+		int nodeCount = red.getNextFree();
+		vector<int> newDist(nodeCount*nodeCount,-1);
+		// Merge cells, keeping smallest values.
+		for (int x = 0; x < nodeCount; x++) {
+			int xN = red[x];
+			for (int y = 0; y < x; y++) {
+				int yN = red[y];
+				int & p = pos(x,y);
+				int & pN = pos(xN,yN,nodeCount,newDist);
+				if (pN == -1) {
+					pN = p; // New value
+				} else if (p < pN) {
+					pN = p; // Updated value
+				} // Otherwise, leave value as-is.
+			}
+		}
+		// Update minimum distances, using Floyd-Warshal's algorithm with k=mergedNode only.
+		int max = -1;
+		for (int x = 0; x < nodeCount; x++) {
+			for (int y = 0; y < x; y++) {
+				int & xy = pos(x,y,nodeCount,newDist);
+				int & xk = pos(x,mergedNode,nodeCount,newDist);
+				int & ky = pos(y,mergedNode,nodeCount,newDist);
+				if (xy > xk + ky) xy = xk + ky;
+				if (xy > max) max = xy;
+			}
+		}
+		// Store results back.
+		distances = newDist;
+		size = nodeCount;
+		greatestDist = max;
+	}
+	
+	operator string() {
+		string res;
+		for (int y = 0; y < size; y++) {
+			for (int x = 0; x < (size - y); x++) {
+				res += padSpace(to_string(pos(x,y)),3);
+			}
+			res += '\n';
+		}
+		return res;
+	}
+	
+};
+
 // A partially-completed search.
 // Note: original board state is not preserved,
 // simply color assignments by zone.
@@ -225,7 +369,7 @@ public:
 	
 	// The default constructor is a ridiculously inefficient path.
 	// Useful for ensuring that 'best' gets replaced quickly in the search.
-	Path() {
+	Path() : colorCounts(1) {
 		this->state.nodeCount = 1000000;
 		this->movesMade = 1000000;
 	}
@@ -236,35 +380,55 @@ public:
 		movesMade = 0;
 		history = make_shared<LinkedList<vInt>>(state.colors);
 		historyG = make_shared<LinkedList<graph>>(state);
-		colorCounts.tally(state.colors); // TODO update for descendants; use for filtering.
+		colorCounts.tally(state.colors); // use for filtering.
+	}
+	
+	// Finds the two furthest nodes apart on the current graph.
+	// Returns a vector with a list of nodes in the path.
+	// If the length is greater, returns two nodes further than that distance apart.
+	vector<int> longestPath(int moveLimit) {
+		// TODO
+		return {}; // For now, ignore.
 	}
 	
 	// Get a list of immediately-reachable states.
-	// 'doneOnly' enforces that we only show 'done' paths.
 	// TODO various params: doneOnly, colorCapped, distCapped.
-	vector<Path> followingStates(bool doneOnly) {
+	vector<Path> followingStates(int moveLimit) {
 		vector<Path> result;
-		// For each node, try all reasonable actions
-		for (int node = 0; node < this->state.nodeCount; node++) {
-			if (doneOnly) {
-				// If it isn't adjacent to everything, it can't combine everything.
-				if (state.adjacent[node].size() < (uint)(state.nodeCount - 1))
-					continue;
+		// checks if a color must be eliminated this turn.
+		bool colorCapped = false;
+		// checks if the longest path must be shortened this turn.
+		// If so, which nodes are part of the path.
+		bool distCapped = false;
+		vector<bool> keyNodes;
+		// Check if there are too many colors to complete in time.
+		if (moveLimit != -1) {
+			if (movesMade + colorCounts.count() - 1 >= moveLimit) return result;
+			// Check if there are the exact limit of colors.
+			if (movesMade + colorCounts.count() == moveLimit) {
+				colorCapped = true;
+			} else {
+				// TODO Check if dist-capped.
+				// TODO check max dist and path.
+				
 			}
+		}
+		// TODO use 'capped' vars.
+		
+		// For each node, try all reasonable actions
+		for (int node = 0; node < state.nodeCount; node++) {
+			// if colorCapped, require color count to be 1.
+			if (colorCapped and colorCounts[state.colors[node]] != 1) continue;
 			
 			unordered_set<int> colorOptions;
 			// Make a list of color changes for the node.
-			for (int node2 : this->state.adjacent[node]) {
-				colorOptions.insert(this->state.colors[node2]);
-			}
-			if (doneOnly) {
-				// If there are multiple colors adjacent, it can't combine everything.
-				if (colorOptions.size() > 1) continue;
-				// If this test and the previous test passed, the result will be 
+			for (int node2 : state.adjacent[node]) {
+				colorOptions.insert(state.colors[node2]);
 			}
 			// Iterate through valid colorings, adding necessary new options
 			for (int nColor : colorOptions) {
 				Path nPath(*this); // Copy the existing setup.
+				nPath.colorCounts.dec(nPath.state.colors[node]); // Decrement color count for color.
 				nPath.state.colors[node] = nColor; // Change node color.
 				nPath.movesMade += 1; // One more move made.
 				Remapper reduction; // Remaps the node numbers.
@@ -299,13 +463,11 @@ public:
 				// we need to make a new node for each.
 				nPath.history = shared_ptr<LinkedList<vInt>>(new LinkedList(newHEntry,nPath.history));
 				nPath.historyG = shared_ptr<LinkedList<graph>>(new LinkedList(nPath.state,nPath.historyG));
+				// If this is a winning state, then return only this.
+				// Everything else is extraneous.
+				if (nPath.done()) return {nPath};
+				// Otherwise, append completed path.
 				result.push_back(nPath); // Finally, done with the new path.
-				if (doneOnly) {
-					// Technically, we only need one 'done' entry.
-					// The rest are extraneous.
-					// After all, two entries at the same depth are equivalent.
-					return result;
-				}
 			}
 		}
 		return result;
@@ -519,16 +681,21 @@ bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vecto
 		// If a solution has already been found, trim invalid solutions.
 		if (best.done() and p.moveCount() + 1 >= best.moveCount()) continue;
 		// cout << (string)p << "\n";
-		// If we are one layer before the deepest valid, then
-		// only contribute 'done' entries.
-		// This lets us optimize our 'for' loops a bit.
-		bool doneOnly = p.moveCount() == best.moveCount() - 2;
 		// Add following states.
-		for (Path pNew : p.followingStates(doneOnly)) {
+		int moveLimit = -1; // Means 'no limit'
+		if (best.done()) moveLimit = best.moveCount(); // Sets a move limit.
+		for (Path pNew : p.followingStates(moveLimit)) {
 			q.push(pNew);
 		}
 	}
 	// cout << (string)best << "\n";
+	if (!best.done()) {
+		result1 = {};
+		result2 = {}
+		cout << "Failed to find result.\n";
+		return false;
+	}
+	
 	result1 = best.applyHistory(zoneMap);
 	result2 = best.graphHistory();
 	iterations = iterCount;
