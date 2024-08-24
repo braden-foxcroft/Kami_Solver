@@ -78,6 +78,47 @@ public:
 	
 };
 
+// A multiset for integers from 0 to N.
+// Tracks number of nonzero elements.
+// Basically just an array.
+class IntMultiSet {
+protected:
+	vector<int> data;
+	int count = 0; // Number of nonzero elements.
+	
+public:
+	
+	IntMultiSet(int n) : data(n), count(0) {}
+	
+	// Increment or decrement value.
+	void inc(int pos) {
+		int& dat = data[pos];
+		if (dat == 0) count++;
+		dat++;
+	}
+	
+	void dec(int pos) {
+		int& dat = data[pos];
+		if (dat == 1) count--;
+		dat--;
+	}
+	
+	// Counts the number of times each int occurs in the result.
+	// Assumes all values are valid.
+	// Should only be used as an initializer.
+	void tally(vector<int> & v) {
+		for (int& i : v) {
+			inc(i);
+		}
+	}
+	
+	// Counts number of nonzero vals.
+	int vals() {
+		return count;
+	}
+	
+};
+
 
 // Maps integers to other integers.
 // Unless otherwise specified, maps ints to themselves.
@@ -176,6 +217,7 @@ protected:
 	int initialNodeCount = 0;
 	Remapper progress;
 	graph state;
+	IntMultiSet colorCounts; // The number of instances of each color.
 	int movesMade = 0;
 	shared_ptr<LinkedList<vInt>> history; // A list of color mappings over time.
 	shared_ptr<LinkedList<graph>> historyG; // A list of previous graphs. For debugging purposes.
@@ -188,16 +230,18 @@ public:
 		this->movesMade = 1000000;
 	}
 	
-	Path(graph state) : progress(state.nodeCount) {
+	Path(graph state) : progress(state.nodeCount), colorCounts(10) {
 		this->state = state;
 		initialNodeCount = state.nodeCount;
 		movesMade = 0;
 		history = make_shared<LinkedList<vInt>>(state.colors);
 		historyG = make_shared<LinkedList<graph>>(state);
+		colorCounts.tally(state.colors); // TODO update for descendants; use for filtering.
 	}
 	
 	// Get a list of immediately-reachable states.
 	// 'doneOnly' enforces that we only show 'done' paths.
+	// TODO various params: doneOnly, colorCapped, distCapped.
 	vector<Path> followingStates(bool doneOnly) {
 		vector<Path> result;
 		// For each node, try all reasonable actions
