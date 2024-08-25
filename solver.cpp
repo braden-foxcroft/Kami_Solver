@@ -452,7 +452,7 @@ graph genGraph(board zones, int zoneCount, vector<int> zoneColors) {
 
 // Solves the problem, and returns results to the '&' parameters.
 // The boolean result is 'true' unless it times out.
-bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vector<int>>> & result1, vector<graph> & result2, uint maxTime) {
+bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vector<int>>> & result1, vector<graph> & result2, uint maxTime, uint & iterations) {
 	bool fullSearch = true;
 	priority_queue_Path q;
 	// priority_queue<Path> q;
@@ -462,7 +462,9 @@ bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vecto
 	if (maxTime) start = clock();
 	clock_t cMaxTime = maxTime * CLOCKS_PER_SEC;
 	// Do the search.
+	uint iterCount = 0;
 	while (q.size() > 0) {
+		iterCount++;
 		if (maxTime != 0 and clock() - start > cMaxTime) {
 			fullSearch = false;
 			break;
@@ -485,6 +487,7 @@ bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vecto
 	// cout << (string)best << "\n";
 	result1 = best.applyHistory(zoneMap);
 	result2 = best.graphHistory();
+	iterations = iterCount;
 	return fullSearch;
 }
 

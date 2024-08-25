@@ -188,6 +188,7 @@ void printHelp() {
 	cout << "\t-graphC     debugging tool: show initial graph state, with node colors as well.\n";
 	cout << "\t-colors     debugging tool: show different color options.\n";
 	cout << "\t-graphs     debugging tool: show graph history for solutions, as well.\n";
+	cout << "\t-count      debugging tool: count number of partial paths processed.\n";
 	cout << "\t-noSolve    debugging tool: don't compute solutions.\n\n";
 	cout << "\t-s=<file>   A solution file to color and print out. Use -c0 to -c3 to select coloring.\n";
 	cout << "\t<filename>  A file to automatically open and use for input.\n";
@@ -246,6 +247,7 @@ int main(int argc, char ** argv) {
 	bool echoMode = false; // Show input
 	bool zoneMode = false; // Show zone boards
 	bool graphMode = false; // Show graph
+	bool showCount = false; // Show number of iterations.
 	bool graphCsMode = false; // Show graph with color matching.
 	bool noSolve = false; // Stop before computing solution
 	bool graphHistory = false; // Show graphs involved in solution.
@@ -269,6 +271,8 @@ int main(int argc, char ** argv) {
 			graphHistory = true;
 		} else if (arg == "-graphs") {
 			graphHistory = true;
+		} else if (arg == "-count") {
+			showCount = true;
 		} else if (arg == "-noSolve") {
 			noSolve = true;
 		} else if (arg == "-graphC") {
@@ -411,7 +415,8 @@ int main(int argc, char ** argv) {
 	// Generate solution (via solver.cpp)
 	vector<vector<vector<int>>> sequence;
 	vector<graph> gHistory;
-	bool perfect = solve(startingGraph,zoneBoard,sequence,gHistory,maxTime);
+	uint loopCount;
+	bool perfect = solve(startingGraph,zoneBoard,sequence,gHistory,maxTime,loopCount);
 	
 	// Print results.
 	if (perfect) {
@@ -426,6 +431,9 @@ int main(int argc, char ** argv) {
 	}
 	if (!perfect) {
 		cout << "Note: due to time-out, solution may not be optimal!\n\n";
+	}
+	if (showCount) {
+		cout << "Number of paths processed: " + to_string(loopCount) + "\n";
 	}
 	
 	return 0;
