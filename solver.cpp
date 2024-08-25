@@ -131,7 +131,13 @@ public:
 	int count() {
 		return countVal;
 	}
+	
+	
+	bool operator==(IntMultiSet other) const {
+		return data==other.data and countVal==other.countVal;
+	}
 
+	bool operator!=(IntMultiSet other) const {return !(*this==other);}
 };
 
 
@@ -248,6 +254,7 @@ protected:
 	// Takes a vector and does Dijkstra's to calculate distances from the given node.
 	// Uses the graph for adjacency checks.
 	int dijkstra(int node, graph & g) {
+		vector<bool> allDone(g.nodeCount);
 		int dist = 0; // Simply the distance of the last node checked.
 		queue<int> nodes;
 		// '-1' is used to say that the node we look at next is
@@ -264,11 +271,16 @@ protected:
 				nodes.push(-1);
 				continue;
 			}
+			// Note: we may be overriding a value with itself.
+			// This doesn't cause errors, though.
+			
 			// Update dist of node
 			pos(next,node) = dist;
-			// Add adjacent nodes to queue if needed.
+			allDone[next] = true;
+			// Add adjacent nodes to queue.
 			for (int i : g.adjacent[next]) {
-				if (pos(i,node) == -1) nodes.push(i); // Add to end of list.
+				if (!allDone[i]) nodes.push(i);
+				allDone[i] = true;
 			}
 		}
 		return dist; // The distance of the furthest node.
@@ -312,9 +324,9 @@ public:
 		int nodeCount = red.getNextFree();
 		vector<int> newDist(nodeCount*nodeCount,-1);
 		// Merge cells, keeping smallest values.
-		for (int x = 0; x < nodeCount; x++) {
+		for (int x = 0; x < size; x++) {
 			int xN = red[x];
-			for (int y = 0; y < x; y++) {
+			for (int y = 0; y <= x; y++) {
 				int yN = red[y];
 				int & p = pos(x,y);
 				int & pN = pos(xN,yN,nodeCount,newDist);
@@ -325,10 +337,11 @@ public:
 				} // Otherwise, leave value as-is.
 			}
 		}
+		
 		// Update minimum distances, using Floyd-Warshal's algorithm with k=mergedNode only.
 		int max = -1;
 		for (int x = 0; x < nodeCount; x++) {
-			for (int y = 0; y < x; y++) {
+			for (int y = 0; y <= x; y++) {
 				int & xy = pos(x,y,nodeCount,newDist);
 				int & xk = pos(x,mergedNode,nodeCount,newDist);
 				int & ky = pos(y,mergedNode,nodeCount,newDist);
@@ -346,15 +359,26 @@ public:
 	int greatest() {return greatestDist;}
 	
 	operator string() {
+		return this->b2str(distances,size);
+	}
+	
+	string b2str(vector<int> & board, int nodeCount) {
 		string res;
-		for (int y = 0; y < size; y++) {
-			for (int x = 0; x < (size - y); x++) {
-				res += padSpace(to_string(pos(x,y)),3);
+		for (int y = 0; y < nodeCount; y++) {
+			for (int x = 0; x <= y; x++) {
+				res += padSpace(to_string(pos(x,y,nodeCount,board)),3);
 			}
 			res += '\n';
 		}
 		return res;
 	}
+	
+	// Struct equality.
+	bool operator==(DistTracker other) const {
+		return distances==other.distances and size==other.size and greatestDist==other.greatestDist;
+	}
+	
+	bool operator!=(DistTracker other) const {return !(*this==other);}
 	
 };
 
@@ -390,7 +414,6 @@ public:
 	}
 	
 	// Get a list of immediately-reachable states.
-	// TODO various params: doneOnly, colorCapped, distCapped.
 	vector<Path> followingStates(int moveLimit) {
 		vector<Path> result;
 		// says if a color must be eliminated this turn.
@@ -418,6 +441,7 @@ public:
 			for (int nColor : colorOptions) {
 				Path nPath(*this); // Copy the existing setup.
 				nPath.colorCounts.dec(nPath.state.colors[node]); // Decrement color count for color.
+				nPath.colorCounts.inc(nColor); // Increment color count for color.
 				nPath.state.colors[node] = nColor; // Change node color.
 				nPath.movesMade += 1; // One more move made.
 				Remapper reduction; // Remaps the node numbers.
@@ -436,12 +460,20 @@ public:
 						reduction.next(node2);
 					}
 				}
-				for (auto node2 : toMerge) reduction[node2] = reduction[node];
+				for (auto node2 : toMerge) {
+					reduction[node2] = reduction[node]; // Rename node.
+					// Reduce color count for merged nodes.
+					nPath.colorCounts.dec(nColor);
+				}
+				
+				
 				
 				// Apply reduction to graph.
 				nPath.state = reduction.reduce(nPath.state);
 				// Apply reduction to distance-tracking.
-				dists.reduce(reduction,reduction[node]);
+				nPath.dists.reduce(reduction,reduction[node]);
+				
+				
 				// track reductions, relative to initial state of board.
 				nPath.progress = nPath.progress.chain(reduction);
 				// Add an entry to 'history'
@@ -454,6 +486,7 @@ public:
 				// we need to make a new node for each.
 				nPath.history = shared_ptr<LinkedList<vInt>>(new LinkedList(newHEntry,nPath.history));
 				nPath.historyG = shared_ptr<LinkedList<graph>>(new LinkedList(nPath.state,nPath.historyG));
+				
 				// If this is a winning state, then return only this.
 				// Everything else is extraneous.
 				if (nPath.done()) return {nPath};
@@ -683,6 +716,7 @@ bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vecto
 	if (!best.done()) {
 		result1 = {};
 		result2 = {};
+		iterations = iterCount;
 		cout << "Failed to find result.\n";
 		return false;
 	}
