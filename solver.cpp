@@ -332,6 +332,7 @@ public:
 				int & ky = pos(y,mergedNode,nodeCount,newDist);
 				if (xy > xk + ky) xy = xk + ky;
 				if (xy > max) max = xy;
+				if (xk > max) max = xk;
 			}
 		}
 		// Store results back.
@@ -339,6 +340,8 @@ public:
 		size = nodeCount;
 		greatestDist = max;
 	}
+	
+	int greatest() {return greatestDist;}
 	
 	operator string() {
 		string res;
@@ -383,24 +386,12 @@ public:
 		colorCounts.tally(state.colors); // use for filtering.
 	}
 	
-	// Finds the two furthest nodes apart on the current graph.
-	// Returns a vector with a list of nodes in the path.
-	// If the length is greater, returns two nodes further than that distance apart.
-	vector<int> longestPath(int moveLimit) {
-		// TODO
-		return {}; // For now, ignore.
-	}
-	
 	// Get a list of immediately-reachable states.
 	// TODO various params: doneOnly, colorCapped, distCapped.
 	vector<Path> followingStates(int moveLimit) {
 		vector<Path> result;
-		// checks if a color must be eliminated this turn.
+		// says if a color must be eliminated this turn.
 		bool colorCapped = false;
-		// checks if the longest path must be shortened this turn.
-		// If so, which nodes are part of the path.
-		bool distCapped = false;
-		vector<bool> keyNodes;
 		// Check if there are too many colors to complete in time.
 		if (moveLimit != -1) {
 			if (movesMade + colorCounts.count() - 1 >= moveLimit) return result;
@@ -408,12 +399,12 @@ public:
 			if (movesMade + colorCounts.count() == moveLimit) {
 				colorCapped = true;
 			} else {
-				// TODO Check if dist-capped.
-				// TODO check max dist and path.
-				
+				DistTracker d = DistTracker(state); // Find longest distance.
+				int dist = d.greatest();
+				if (dist - 2*(moveLimit - movesMade - 1) >= 1) return result; // Skip if too long.
+				// TODO store in object, update instead of re-create.
 			}
 		}
-		// TODO use 'capped' vars.
 		
 		// For each node, try all reasonable actions
 		for (int node = 0; node < state.nodeCount; node++) {
