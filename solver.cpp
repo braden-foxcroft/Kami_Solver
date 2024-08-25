@@ -276,6 +276,8 @@ protected:
 	
 	
 public:
+
+	DistTracker() {}
 	// Figure out distances
 	DistTracker(graph & g) {
 		size = g.nodeCount;
@@ -365,6 +367,7 @@ protected:
 	Remapper progress;
 	graph state;
 	IntMultiSet colorCounts; // The number of instances of each color.
+	DistTracker dists; // The distances of each node pair
 	int movesMade = 0;
 	shared_ptr<LinkedList<vInt>> history; // A list of color mappings over time.
 	shared_ptr<LinkedList<graph>> historyG; // A list of previous graphs. For debugging purposes.
@@ -377,7 +380,7 @@ public:
 		this->movesMade = 1000000;
 	}
 	
-	Path(graph state) : progress(state.nodeCount), colorCounts(10) {
+	Path(graph state) : progress(state.nodeCount), colorCounts(10), dists(state) {
 		this->state = state;
 		initialNodeCount = state.nodeCount;
 		movesMade = 0;
@@ -395,15 +398,10 @@ public:
 		// Check if there are too many colors to complete in time.
 		if (moveLimit != -1) {
 			if (movesMade + colorCounts.count() - 1 >= moveLimit) return result;
+			// Skip if too long.
+			if (dists.greatest() - 2*(moveLimit - movesMade - 1) >= 1) return result;
 			// Check if there are the exact limit of colors.
-			if (movesMade + colorCounts.count() == moveLimit) {
-				colorCapped = true;
-			} else {
-				DistTracker d = DistTracker(state); // Find longest distance.
-				int dist = d.greatest();
-				if (dist - 2*(moveLimit - movesMade - 1) >= 1) return result; // Skip if too long.
-				// TODO store in object, update instead of re-create.
-			}
+			if (movesMade + colorCounts.count() == moveLimit) colorCapped = true;
 		}
 		
 		// For each node, try all reasonable actions
@@ -442,6 +440,8 @@ public:
 				
 				// Apply reduction to graph.
 				nPath.state = reduction.reduce(nPath.state);
+				// Apply reduction to distance-tracking.
+				dists.reduce(reduction,reduction[node]);
 				// track reductions, relative to initial state of board.
 				nPath.progress = nPath.progress.chain(reduction);
 				// Add an entry to 'history'
