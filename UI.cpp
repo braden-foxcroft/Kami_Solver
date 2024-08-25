@@ -16,7 +16,7 @@ typedef vector<vector<int>> board;
 string fColored(string s, int i) {
 	switch (i) {
 		case 0:
-			return "\033[91m"s + s + "\033[39m"s;
+			return "\033[90m"s + s + "\033[39m"s;
 		case 1:
 			return "\033[94m"s + s + "\033[39m"s;
 		case 2:
@@ -61,7 +61,7 @@ string myIntToStr(int i) {
 string colored(int i) {
 	switch (i) {
 		case 0:
-			return "\033[101m0\033[49m";
+			return "\033[100m0\033[49m";
 		case 1:
 			return "\033[104m1\033[49m";
 		case 2:
