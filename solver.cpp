@@ -535,8 +535,9 @@ public:
 	// Checks which one is superior ('done' always beats 'not done')
 	// True means 'other' is superior.
 	bool beaten(Path other) const {
-		if (other.done() and !done()) return true;
-		return score() > other.score();
+		if (!other.done()) return false;
+		if (!done()) return true;
+		return moveCount() > other.moveCount();
 	}
 	
 	// Gives the 'fingerprint'. If two paths have the same fingerprint, then
