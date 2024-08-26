@@ -685,6 +685,7 @@ graph genGraph(board zones, int zoneCount, vector<int> zoneColors) {
 // The boolean result is 'true' unless it times out.
 bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vector<int>>> & result1, vector<graph> & result2, uint maxTime, uint & iterations) {
 	bool fullSearch = true;
+	bool showCount = (iterations == 1);
 	priority_queue_Path q;
 	// priority_queue<Path> q;
 	Path best;
@@ -702,7 +703,10 @@ bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vecto
 		}
 		Path p = pop(q);
 		// update best, if needed
-		if (best.beaten(p)) best = p;
+		if (best.beaten(p)) {
+			best = p;
+			if (showCount) cout << "Found new solution: " << p.moveCount() << " moves.\n";
+		}
 		// If a solution has already been found, trim invalid solutions.
 		if (best.done() and p.moveCount() + 1 >= best.moveCount()) continue;
 		// cout << (string)p << "\n";

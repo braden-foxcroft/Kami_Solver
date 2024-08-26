@@ -420,7 +420,8 @@ int main(int argc, char ** argv) {
 	// Generate solution (via solver.cpp)
 	vector<vector<vector<int>>> sequence;
 	vector<graph> gHistory;
-	uint loopCount;
+	uint loopCount = 0;
+	if (showCount) loopCount = 1;
 	bool perfect = solve(startingGraph,zoneBoard,sequence,gHistory,maxTime,loopCount);
 	
 	// Print results.
