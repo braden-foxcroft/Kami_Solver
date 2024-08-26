@@ -1,3 +1,10 @@
+# An optimal solution takes 7 moves.
+# By telling the solver this, we save oodles of time.
+# use the '-count' flag to see how much of a difference it makes.
+-min=7
+-max=7
+
+
 7777750220577777
 7552550220552557
 7552500000052557

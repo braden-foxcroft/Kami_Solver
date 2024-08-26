@@ -683,7 +683,7 @@ graph genGraph(board zones, int zoneCount, vector<int> zoneColors) {
 
 // Solves the problem, and returns results to the '&' parameters.
 // The boolean result is 'true' unless it times out.
-bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vector<int>>> & result1, vector<graph> & result2, uint maxTime, uint & iterations) {
+bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vector<int>>> & result1, vector<graph> & result2, uint maxTime, uint & iterations, int minSol, int maxSol) {
 	bool fullSearch = true;
 	bool showCount = (iterations == 1);
 	priority_queue_Path q;
@@ -706,14 +706,14 @@ bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vecto
 		if (best.beaten(p)) {
 			best = p;
 			if (showCount) cout << "Found new solution: " << p.moveCount() << " moves.\n";
+			maxSol = p.moveCount(); // Update pruning distance.
+			if (maxSol <= minSol) break; // If we have reached an optimal solution, finish.
 		}
 		// If a solution has already been found, trim invalid solutions.
-		if (best.done() and p.moveCount() + 1 >= best.moveCount()) continue;
+		if (maxSol >= 0 and p.moveCount() + 1 >= maxSol) continue;
 		// cout << (string)p << "\n";
 		// Add following states.
-		int moveLimit = -1; // Means 'no limit'
-		if (best.done()) moveLimit = best.moveCount(); // Sets a move limit.
-		for (Path pNew : p.followingStates(moveLimit)) {
+		for (Path pNew : p.followingStates(maxSol)) {
 			q.push(pNew);
 		}
 	}
@@ -722,10 +722,21 @@ bool solve(graph startingPoint, vector<vector<int>> zoneMap, vector<vector<vecto
 		result1 = {};
 		result2 = {};
 		iterations = iterCount;
-		cout << "Failed to find result.\n";
+		if (fullSearch == false) {
+			cout << "Timed out without finding a solution.\n";
+		} else if (maxSol > 0) {
+			cout << "Failed to find solution. Perhaps '-max=" << maxSol-1 <<"' was too restrictive?\n";
+			return true;
+		} else {
+			cout << "Failed to find result, for an unknown reason.\n";
+		}
 		return false;
 	}
-	
+	if (minSol > 0 and maxSol > minSol) {
+		cout << "Note: 'minimum moves' value not reached!\n\texpected: ";
+		cout << minSol << " moves,\n\tgot: ";
+		cout << maxSol << " moves.\n";
+	}
 	result1 = best.applyHistory(zoneMap);
 	result2 = best.graphHistory();
 	iterations = iterCount;

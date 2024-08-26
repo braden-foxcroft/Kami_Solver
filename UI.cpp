@@ -169,9 +169,10 @@ bool isPrefix(string pref, string longer) {
 	return a.first == pref.end();
 }	
 
-void printHelp() {
-	cout << "To use, enter a grid of numbers, ending in EOF (ctrl-d on linux)\n";
-	cout << "Or, include a filename as one of the args.\n\n";
+void printHelp(bool debug) {
+	cout << "To use, enter a grid of numbers, ending in the character 'q'.\n";
+	cout << "Or, include an input filename as one of the args.\n";
+	cout << "Alternatively, a solution file can be printed with color, using '-s=<file>' and '-c0' through '-c3'.\n\n";
 	cout << "args:\n";
 	cout << "\t-c0         No colors.\n";
 	cout << "\t-c1         Background colors only.\n";
@@ -181,15 +182,26 @@ void printHelp() {
 	cout << "\t-auto       Assume input comes from a file or pipe, and skip user prompts.\n";
 	cout << "\t            This is automatically enabled if you pass a file parameter\n";
 	cout << "\t-help       This page.\n";
+	cout << "\t-help=d     This page, with debugging arguments.\n";
 	cout << "\t-t=time     Stop solver after <time> seconds. Integers only.\n";
-	cout << "\t-echo       debugging tool: show parsed input.\n";
-	cout << "\t-zones      debugging tool: show zones.\n";
-	cout << "\t-graph      debugging tool: show initial graph state.\n";
-	cout << "\t-graphC     debugging tool: show initial graph state, with node colors as well.\n";
-	cout << "\t-colors     debugging tool: show different color options.\n";
-	cout << "\t-graphs     debugging tool: show graph history for solutions, as well.\n";
-	cout << "\t-count      debugging tool: count number of partial paths processed.\n";
-	cout << "\t-noSolve    debugging tool: don't compute solutions.\n\n";
+	if (debug) {
+		cout << "\n";
+		cout << "debugging tools:\n";
+		cout << "\t-echo       show parsed and colored input.\n";
+		cout << "\t-zones      show zones.\n";
+		cout << "\t-graph      show initial graph state.\n";
+		cout << "\t-graphC     show initial graph state, with node colors as well.\n";
+		cout << "\t-colors     show different color options.\n";
+		cout << "\t-graphs     show graph history for solutions, as well.\n";
+		cout << "\t-count      count number of partial paths processed.\n";
+		cout << "\t-noSolve    don't compute solutions.\n";
+	}
+	cout << "\n";
+	cout << "The following two args can also be included on blank lines in an input file:\n";
+	cout << "\t-min=n      Stop solver if a solution is found with 'n' moves or less.\n";
+	cout << "\t-max=n      Don't consider soltions with more than 'n' moves.\n";
+	cout << "\n";
+	cout << "file inputs:\n";
 	cout << "\t-s=<file>   A solution file to color and print out. Use -c0 to -c3 to select coloring.\n";
 	cout << "\t<filename>  A file to automatically open and use for input.\n";
 }
@@ -262,8 +274,10 @@ int main(int argc, char ** argv) {
 	bool fileSol = false; // Decides if we are printing a solution from a file.
 	ifstream solFile; // File to use, if applicable.
 	bool noUserMessage = false; // Skips help message when user manually enters input.
+	int minSol = 0; // The cutoff for when to return a solution.
+	int maxSol = -1; // The cutoff for solutions to ignore. -1 means no cutoff.
 	uint maxTime = 0; // The maximum time. '0' means 'none'
-	int colorMode = 2; // The color mode to use.
+	int colorMode = 3; // The color mode to use.
 	for (int i = 1; i < argc; i++) {
 		string arg = argv[i];
 		if (arg == "-zones") {
@@ -298,7 +312,10 @@ int main(int argc, char ** argv) {
 		} else if (arg == "-auto") {
 			noUserMessage = true;
 		} else if (arg == "-help" or arg == "--help" or arg == "/?" or arg == "-h") {
-			printHelp();
+			printHelp(false);
+			return 0;
+		} else if (arg == "-help=d") {
+			printHelp(true);
 			return 0;
 		} else if (isPrefix("-t=",arg)) {
 			maxTime = stoi(arg.substr(3));
@@ -307,6 +324,21 @@ int main(int argc, char ** argv) {
 				cout << "time must be an int greater than 0!\n";
 				exit(1);
 			}
+		} else if (isPrefix("-min=",arg)) {
+			minSol = stoi(arg.substr(5));
+			if (minSol == 0) {
+				cout << "invalid arg: '" + arg + "'\n";
+				cout << "minimum must be an int greater than 0!\n";
+				exit(1);
+			}
+		} else if (isPrefix("-max=",arg)) {
+			maxSol = stoi(arg.substr(5));
+			if (maxSol == 0) {
+				cout << "invalid arg: '" + arg + "'\n";
+				cout << "maximum must be an int greater than 0!\n";
+				exit(1);
+			}
+			maxSol++; // Since it's an exclusive max, not an inclusive max.
 		} else if (isPrefix("-s=",arg)) {
 			solFile.open(arg.substr(3));
 			if (!solFile.is_open()) {
@@ -376,6 +408,48 @@ int main(int argc, char ** argv) {
 			if (c == 'q') break;
 			continue;
 		}
+		// Handle '-' min and max
+		if (c == '-') {
+			string token = "-";
+			for (int i = 0; i < 4; i++) {
+				nextChar(c,false,fileInput,inputFile);
+				token += c;
+			}
+			if (token == "-min=") {
+				token = "";
+				while (true) {
+					nextChar(c,false,fileInput,inputFile);
+					if (c == '\n') break;
+					token += c;
+				}
+				if (minSol == 0) {
+					minSol = stoi(token);
+				} else if (stoi(token) != minSol) {
+					cout << "ignored '-min=" << stoi(token) << "' in file, used value from args (" << minSol << ") instead.\n";
+				}
+			} else if (token == "-max=") {
+				token = "";
+				while (true) {
+					nextChar(c,false,fileInput,inputFile);
+					if (c == '\n') break;
+					token += c;
+				}
+				if (maxSol == -1) {
+					maxSol = stoi(token) + 1;
+				} else if (stoi(token) + 1 != maxSol) {
+					cout << "ignored '-max=" << stoi(token) << "' in file, used value from args (" << maxSol-1 << ") instead.\n";
+				}
+			} else {
+				cerr << "Bad input: '-' not part of '-min=<int>' or '-max=<int>'\n";
+				exit(2);
+			}
+			continue;
+		}
+		if (c == '#') { // A comment.
+			while (c != '\n') nextChar(c,false,fileInput,inputFile);
+			continue;
+		}
+		
 		// Handle int input
 		if (not (c >= '0' and c <= '9')) {
 			cerr << "Bad input: non-int character given as input!\n";
@@ -416,30 +490,36 @@ int main(int argc, char ** argv) {
 	if (noSolve) return 0;
 	
 	
-	
 	// Generate solution (via solver.cpp)
 	vector<vector<vector<int>>> sequence;
 	vector<graph> gHistory;
 	uint loopCount = 0;
 	if (showCount) loopCount = 1;
-	bool perfect = solve(startingGraph,zoneBoard,sequence,gHistory,maxTime,loopCount);
+	bool perfect = solve(startingGraph,zoneBoard,sequence,gHistory,maxTime,loopCount,minSol,maxSol);
 	
-	// Print results.
-	if (perfect) {
-		cout << "An optimal solution:\n\n";
+	if (sequence.size() > 0) {
+		// Print results.
+		if (minSol > 0 and (unsigned)minSol == sequence.size()-1) {
+			cout << "A solution in " << minSol << " moves or fewer:\n\n";
+		} else if (perfect) {
+			cout << "An optimal solution:\n\n";
+		} else {
+			cout << "Timed out. Best path found:\n\n";
+		}
+		for (uint i = 0; i < sequence.size(); i++) {
+			cout << board2Str(sequence[i],colorMode,drawBorders);
+			if (graphHistory) cout << graph2StrV2(gHistory[i],colorMode) << "\n";
+			cout << "\n\n";
+		}
+		if (!perfect) {
+			cout << "Note: due to time-out, solution may not be optimal!\n\n";
+		}
 	} else {
-		cout << "Timed out. Best path found:\n\n";
-	}
-	for (uint i = 0; i < sequence.size(); i++) {
-		cout << board2Str(sequence[i],colorMode,drawBorders);
-		if (graphHistory) cout << graph2StrV2(gHistory[i],colorMode) << "\n";
-		cout << "\n\n";
-	}
-	if (!perfect) {
-		cout << "Note: due to time-out, solution may not be optimal!\n\n";
+		cout << "No solution found.\n";
 	}
 	if (showCount) {
-		cout << "Number of paths processed: " + to_string(loopCount) + "\n";
+		cout << "Number of board states processed: " + to_string(loopCount) + "\n";
+		cout << "Number of moves: " << sequence.size()-1 << "\n";
 	}
 	
 	return 0;
