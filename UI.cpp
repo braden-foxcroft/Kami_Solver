@@ -198,8 +198,9 @@ void printHelp(bool debug) {
 	}
 	cout << "\n";
 	cout << "The following two args can also be included on blank lines in an input file:\n";
+	cout << "(If the optimal move count is known, set 'min' and 'max' to that number to massively improve performance!)\n";
 	cout << "\t-min=n      Stop solver if a solution is found with 'n' moves or less.\n";
-	cout << "\t-max=n      Don't consider soltions with more than 'n' moves.\n";
+	cout << "\t-max=n      Don't consider solutions with more than 'n' moves.\n";
 	cout << "\n";
 	cout << "file inputs:\n";
 	cout << "\t-s=<file>   A solution file to color and print out. Use -c0 to -c3 to select coloring.\n";

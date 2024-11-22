@@ -2,6 +2,7 @@
 
 # automatically recomputes and stores the answer to every level.
 # designed for linux.
+# (default is file overwrite)
 
 from pathlib import Path
 import subprocess as SP
